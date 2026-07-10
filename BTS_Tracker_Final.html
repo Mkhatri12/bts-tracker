@@ -1,0 +1,2890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>BTS Dependency Tracker</title>
+<style>
+:root{
+  --bg:#f4f5f8;--surface:#fff;--border:#e0e3eb;--border2:#eef0f5;
+  --text:#1a2035;--text2:#555;--text3:#888;
+  --brand:#2e3250;--brand2:#4a6fa5;--brand3:#6878a8;
+  --rail:#c8d0e8;--rail-border:#a0aac8;
+  --green:#4a7c40;--green-bg:#E2EFDA;--green-text:#375623;
+  --red:#C00000;--red-bg:#FFE0E0;
+  --yellow-bg:#FFF2CC;--yellow-text:#7F6000;
+  --blue-bg:#DDEEFF;--blue-text:#1F497D;
+  --delayed:#C0392B;--atrisk:#E67E22;
+  --shadow:0 1px 4px rgba(0,0,0,.08);
+  --shadow2:0 8px 32px rgba(0,0,0,.18);
+  --radius:6px;--radius2:4px;
+}
+.dark select option{background:var(--surface);color:var(--text)}
+.dark select option{background:#1a1d2e;color:#e8eaf0}
+.dark select option{background:#1a1d2e;color:#e8eaf0}
+.dark{
+  --bg:#0f1117;--surface:#1a1d2e;--border:#2a2d3e;--border2:#252838;
+  --text:#e8eaf0;--text2:#b0b4c8;--text3:#606480;
+  --brand:#1a1d2e;--brand2:#5a7fbf;--brand3:#4a5888;
+  --rail:#1e2235;--rail-border:#2a2d3e;
+  --green-bg:#1a2e1a;--green-text:#6abf60;
+  --red-bg:#2e1a1a;
+  --yellow-bg:#2e2a1a;--yellow-text:#c8a84a;
+  --blue-bg:#1a2035;--blue-text:#6a9fd8;
+  --shadow:0 1px 4px rgba(0,0,0,.3);
+  --shadow2:0 8px 32px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0;transition:background-color .2s,color .2s,border-color .2s}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Calibri,Arial,sans-serif;font-size:13px;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+.hdr{background:var(--brand);color:#fff;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.2);height:48px}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.hdr h1{font-size:14px;font-weight:600;letter-spacing:-.2px;white-space:nowrap}
+.hdr-badge{background:#FFD700;color:#1F3864;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px}
+.hdr-r{display:flex;gap:6px;align-items:center}
+#sync-status{font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px;background:rgba(255,255,255,.1)}
+
+/* ── VIEW SWITCHER ──────────────────────────────────────────────── */
+.view-tabs{display:flex;background:rgba(255,255,255,.1);border-radius:6px;padding:2px;gap:1px}
+.view-tab{background:none;border:none;color:rgba(255,255,255,.6);font-size:11px;font-weight:600;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:inherit;transition:.15s}
+.view-tab.active{background:#fff;color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.view-tab:hover:not(.active){color:#fff;background:rgba(255,255,255,.15)}
+
+/* ── TOOLBAR ────────────────────────────────────────────────────── */
+.toolbar{background:var(--surface);padding:7px 20px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:48px;z-index:199;box-shadow:var(--shadow)}
+.toolbar-label{font-size:11px;color:var(--text3);font-weight:500}
+.fsel{padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius2);font-size:11px;background:var(--surface);cursor:pointer;color:var(--text);font-family:inherit;font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.06);outline:none}
+.toolbar-sep{width:1px;height:20px;background:var(--border);margin:0 2px}
+
+/* ── BUTTONS ────────────────────────────────────────────────────── */
+.btn{padding:5px 12px;border-radius:var(--radius2);font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:.15s;font-family:inherit;display:inline-flex;align-items:center;gap:4px}
+.btn-primary{background:var(--brand2);color:#fff;border-color:var(--brand2)} .btn-primary:hover{background:#3a5a8a;border-color:#3a5a8a}
+.btn-dark{background:var(--brand);color:#fff;border-color:var(--brand)} .btn-dark:hover{filter:brightness(1.2)}
+.btn-out{background:var(--surface);color:var(--brand2);border-color:#c5d0e8} .btn-out:hover{background:var(--blue-bg)}
+.btn-ghost{background:none;border:none;cursor:pointer;padding:3px 5px;font-size:12px;color:var(--text3);border-radius:3px;font-family:inherit} .btn-ghost:hover{background:var(--border2);color:var(--text)}
+.btn-icon{background:none;border:1px solid var(--border);color:var(--text2);border-radius:var(--radius2);padding:4px 8px;font-size:11px;cursor:pointer;font-family:inherit} .btn-icon:hover{border-color:var(--brand2);color:var(--brand2)}
+.kbd{display:inline-block;background:var(--border);color:var(--text2);border-radius:3px;padding:1px 5px;font-size:10px;font-family:monospace;border:1px solid var(--border)}
+
+/* ── SUMMARY BAR ────────────────────────────────────────────────── */
+.sbar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spill{cursor:default}
+.spill[onclick]{cursor:pointer}
+.spill[onclick]:hover{opacity:.85;transform:scale(1.02);transition:.1s}
+.spill{font-size:11px;font-weight:700;padding:3px 12px;border-radius:12px;white-space:nowrap;cursor:pointer;transition:.1s} .spill:hover{filter:brightness(.95)}
+.sbar-right{margin-left:auto;display:flex;gap:6px;align-items:center}
+
+/* ── LEGEND ─────────────────────────────────────────────────────── */
+.legend{display:flex;gap:10px;flex-wrap:wrap;padding:6px 20px;align-items:center;border-bottom:1px solid var(--border);background:var(--bg)}
+.leg{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)}
+.ldot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* ── EPIC CARDS PANEL ────────────────────────────────────────────── */
+.epic-panel{display:none;padding:12px 20px;background:var(--bg);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.epic-panel.open{display:flex}
+.ecard{background:var(--surface);border-radius:var(--radius);padding:12px 14px;flex:1;min-width:200px;max-width:320px;border:1px solid var(--border);border-left:3px solid var(--brand2);box-shadow:var(--shadow)}
+.ecard-jira{font-size:11px;margin-bottom:3px}
+.ecard-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.3}
+.ecard-prog{height:4px;background:var(--border);border-radius:2px;margin-bottom:6px;overflow:hidden}
+.ecard-pfill{height:100%;background:linear-gradient(90deg,var(--brand2),#4CAF50);border-radius:2px;transition:width .4s}
+.ecard-stats{display:flex;gap:4px;flex-wrap:wrap}
+.spill2{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700}
+
+/* ── TRACKER ─────────────────────────────────────────────────────── */
+.tracker{padding:16px 20px 60px}
+.view-pane{display:none} .view-pane.active{display:block}
+
+/* ── EPIC BLOCK ─────────────────────────────────────────────────── */
+.epic-block{margin-bottom:20px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border);display:flex;background:var(--surface)}
+
+/* ── EPIC RAIL ──────────────────────────────────────────────────── */
+.epic-rail{width:148px;min-width:148px;background:var(--rail);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14px 10px;text-align:center;border-right:2px solid var(--rail-border)}
+.epic-badge{display:inline-block;background:var(--brand2);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;text-decoration:none;margin-bottom:6px} .epic-badge:hover{background:#3a5a8a}
+.epic-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:8px;word-break:break-word}
+.epic-link{color:var(--brand2);font-size:10px;text-decoration:none;margin-bottom:8px;display:block;font-weight:600} .epic-link:hover{text-decoration:underline}
+.epic-assignee{font-size:10px;color:var(--text2);background:var(--border);border-radius:8px;padding:2px 7px;margin-bottom:8px;display:inline-block;font-weight:500}
+.epic-rail-btns{display:flex;flex-direction:column;gap:4px;width:100%}
+.btn-rail-g{background:var(--surface);border:1px solid #b8d4b0;color:var(--green);padding:4px 0;border-radius:3px;font-size:11px;cursor:pointer;width:100%;font-family:inherit;font-weight:600} .btn-rail-g:hover{background:var(--green-bg)}
+.btn-rail-r{background:var(--surface);border:1px solid #e0b0b0;color:#a33;padding:4px 0;border-radius:3px;font-size:11px;cursor:pointer;width:100%;font-family:inherit;font-weight:600} .btn-rail-r:hover{background:var(--red-bg)}
+.epic-content{flex:1;min-width:0;overflow:hidden}
+
+/* ── SECTION HEADER ─────────────────────────────────────────────── */
+.sec-hdr{background:var(--brand3);color:#fff;font-size:13px;font-weight:700;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(0,0,0,.1);cursor:grab;user-select:none;letter-spacing:.1px;position:relative;z-index:1}
+.sec-hdr:active{cursor:grabbing}
+.sec-hdr.drag-over{background:#4a5a8a;outline:2px dashed rgba(255,255,255,.6)}
+.sec-drag-handle{font-size:13px;margin-right:8px;opacity:.5;cursor:grab}
+.sec-hdr-left{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow:hidden}
+.sec-hdr-btns{display:flex;gap:4px;align-items:center;flex-shrink:0}
+.btn-sec{border-radius:3px;font-size:11px;font-weight:600;cursor:pointer;padding:2px 9px;border:1px solid;font-family:inherit}
+.btn-sec-rename{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff} .btn-sec-rename:hover{background:rgba(255,255,255,.25)}
+.btn-sec-g{background:#d4edda;border-color:#a8d5b5;color:#2d6a3f} .btn-sec-g:hover{background:#bce0c8}
+.btn-sec-r{background:#fde0e0;border-color:#f0b8b8;color:#a33} .btn-sec-r:hover{background:#f8c8c8}
+
+/* ── TABLE ──────────────────────────────────────────────────────── */
+table{width:100%;min-width:1400px;border-collapse:collapse;background:var(--surface);table-layout:fixed}
+thead th{background:#3a4f7a;color:#fff;font-size:12px;font-weight:700;padding:9px 10px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10;cursor:default}
+.dark thead th{background:#1e2a45}
+thead th.col-drag-over{background:#5a7fa5;outline:2px dashed rgba(255,255,255,.5)}
+thead th:first-child{width:32px;text-align:center}
+thead th:last-child{width:70px;text-align:center}
+.col-drag-handle{opacity:.4;cursor:grab;margin-right:3px;font-size:10px} .col-drag-handle:hover{opacity:1}
+.drow{width:100%}
+.drow{}
+.drow td{padding:8px 10px;border-bottom:1px solid var(--border2);vertical-align:top;overflow:hidden;word-break:break-word;max-height:120px}
+.drow.alt td{background:#F7F9FF}
+.dark .drow.alt td{background:#1e2235}
+.drow.selected td{background:#e8f0ff!important;outline:1px solid var(--brand2)}
+.dark .drow.selected td{background:#1a2545!important}
+.drow:hover td{background:#EBF2FF!important}
+.dark .drow:hover td{background:#1a2035!important}
+.drow:hover .row-act{opacity:1!important}
+.num-c{text-align:center;font-weight:700;color:var(--text3);font-size:11px;vertical-align:middle!important;width:32px}
+.act-c{text-align:center;vertical-align:middle!important;width:70px}
+.row-act{opacity:0;transition:.15s;display:flex;gap:2px;justify-content:center;align-items:center}
+.priority-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:4px;vertical-align:middle}
+
+/* ── INPUTS ─────────────────────────────────────────────────────── */
+.ci{width:100%;border:none;background:transparent;font-size:13px;font-family:inherit;padding:2px;outline:none;color:var(--text);resize:none;overflow:hidden;min-height:26px;line-height:1.6}
+.ci:focus{background:#fffde7;border-radius:3px}
+.dark .ci:focus{background:#2a2800}
+.di{border:none;background:transparent;font-size:12px;font-family:inherit;padding:2px 0;outline:none;width:100%;cursor:pointer;color:var(--text)}
+.di:focus{background:#fffde7;border-radius:3px}
+.dark .di:focus{background:#2a2800}
+.di.ov{background:#FFD7D7!important;color:#C00000!important;font-weight:700;border-radius:3px;padding:2px 4px}
+.dark .di.ov{background:#3a1a1a!important;color:#ff6060!important}
+.ss{width:100%;border:1px solid var(--border);background:var(--bg);font-size:12px;font-family:inherit;font-weight:600;padding:4px 5px;outline:none;cursor:pointer;border-radius:var(--radius2);color:var(--text)}
+.psel{width:100%;border:1px solid var(--border);background:var(--bg);font-size:11px;font-family:inherit;font-weight:600;padding:3px 5px;outline:none;cursor:pointer;border-radius:var(--radius2);color:var(--text)}
+
+/* ── ROW DETAIL PANEL ────────────────────────────────────────────── */
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:300;backdrop-filter:blur(2px)}
+.detail-overlay.open{display:block}
+.detail-panel{position:fixed;right:0;top:0;bottom:0;width:420px;max-width:95vw;background:var(--surface);box-shadow:-4px 0 24px rgba(0,0,0,.15);z-index:301;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1)}
+.detail-panel.open{transform:translateX(0)}
+.dp-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--brand);color:#fff;flex-shrink:0}
+.dp-hdr h3{font-size:13px;font-weight:700}
+.dp-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;padding:0 4px;line-height:1} .dp-close:hover{color:#fff}
+.dp-body{flex:1;overflow-y:auto;padding:16px 20px}
+.dp-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface)}
+.dp-title{font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;padding-right:10px}
+.dp-content{flex:1;overflow-y:auto;padding:20px 20px 20px 20px;min-width:0;box-sizing:border-box}
+.dp-section{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:14px 0 8px;border-top:1px solid var(--border2);margin-top:8px}
+.dp-field{margin-bottom:14px}
+.dp-field label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px}
+.dp-field-val{font-size:13px;color:var(--text);line-height:1.5;padding:6px 10px;background:var(--bg);border-radius:var(--radius2);border:1px solid var(--border);min-height:32px}
+.dp-section{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+
+/* ── COMMENTS ────────────────────────────────────────────────────── */
+.comments-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.comment-item{display:flex;gap:9px;align-items:flex-start}
+.comment-avatar{width:28px;height:28px;border-radius:50%;background:var(--brand2);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.comment-bubble{background:var(--bg);border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:8px 10px;flex:1;min-width:0}
+.comment-meta{font-size:10px;color:var(--text3);margin-bottom:3px;display:flex;justify-content:space-between}
+.comment-text{font-size:12px;color:var(--text);line-height:1.5;word-break:break-word}
+/* ── TEAM ROSTER MODAL ──────────────────────────────────────────────────── */
+.roster-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;backdrop-filter:blur(3px);align-items:center;justify-content:center}
+.roster-modal-bg.open{display:flex}
+.roster-modal{background:var(--surface);border-radius:12px;padding:28px;width:360px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.roster-modal h3{font-size:16px;font-weight:700;color:var(--text);margin:0 0 6px}
+.roster-modal p{font-size:12px;color:var(--text3);margin:0 0 18px}
+.roster-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;max-height:240px;overflow-y:auto}
+.roster-btn{background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text);text-align:left;transition:.15s}
+.roster-btn:hover{border-color:var(--brand2);background:var(--blue-bg);color:var(--brand2)}
+.roster-btn.selected{border-color:var(--brand2);background:var(--blue-bg);color:var(--brand2)}
+.roster-btn .ra{width:30px;height:30px;border-radius:50%;background:var(--brand2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.roster-divider{font-size:11px;color:var(--text3);text-align:center;margin:8px 0;position:relative}
+.roster-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
+.roster-divider span{background:var(--surface);padding:0 8px;position:relative}
+/* ── TEAM ROSTER MODAL ──────────────────────────────────────────────────── */
+.roster-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;backdrop-filter:blur(3px);align-items:center;justify-content:center}
+.roster-modal-bg.open{display:flex}
+.roster-modal{background:var(--surface);border-radius:12px;padding:28px;width:360px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.roster-modal h3{font-size:16px;font-weight:700;color:var(--text);margin:0 0 6px}
+.roster-modal p{font-size:12px;color:var(--text3);margin:0 0 18px}
+.roster-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;max-height:240px;overflow-y:auto}
+.roster-btn{background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text);text-align:left;transition:.15s}
+.roster-btn:hover,.roster-btn.selected{border-color:var(--brand2);background:var(--blue-bg);color:var(--brand2)}
+.roster-btn .ra{width:30px;height:30px;border-radius:50%;background:var(--brand2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.roster-divider{font-size:11px;color:var(--text3);text-align:center;margin:12px 0;position:relative}
+.roster-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
+.roster-divider span{background:var(--surface);padding:0 8px;position:relative}
+
+/* ── COMMENT ENHANCEMENTS ──────────────────────────────────────────── */
+.username-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);flex-shrink:0}
+.username-bar b{color:var(--brand2);cursor:pointer;text-decoration:underline dotted}
+.emoji-picker{position:absolute;bottom:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;display:grid;grid-template-columns:repeat(8,28px);gap:2px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:500;width:240px}
+.emoji-picker span{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border-radius:4px}
+.emoji-picker span:hover{background:var(--bg)}
+.mention-dropdown{position:absolute;bottom:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:500;min-width:180px;max-height:180px;overflow-y:auto}
+.mention-item{padding:7px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text)}
+.mention-item:hover{background:var(--bg)}
+.mention-item .avatar{width:22px;height:22px;border-radius:50%;background:var(--brand2);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.comment-mention{color:var(--brand2);font-weight:700;background:#e8f0ff;padding:1px 4px;border-radius:3px}
+.comment-thread{margin-left:36px;border-left:2px solid var(--border);padding-left:10px;margin-top:6px;display:flex;flex-direction:column;gap:6px}
+.comment-actions{display:flex;gap:6px;margin-top:4px}
+.comment-actions button{background:none;border:none;font-size:10px;color:var(--text3);cursor:pointer;padding:1px 5px;border-radius:3px;font-family:inherit}
+.comment-actions button:hover{background:var(--bg);color:var(--brand2)}
+.comment-editing textarea{width:100%;border:1px solid var(--brand2);border-radius:4px;padding:6px 8px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);resize:none;outline:none}
+.dp-input-wrap{position:relative;flex:1}
+
+/* ── TEAM ROSTER MODAL ──────────────────────────────────────────────────── */
+.roster-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;backdrop-filter:blur(3px);align-items:center;justify-content:center}
+.roster-modal-bg.open{display:flex}
+.roster-modal{background:var(--surface);border-radius:12px;padding:28px;width:360px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.roster-modal h3{font-size:16px;font-weight:700;color:var(--text);margin:0 0 6px}
+.roster-modal p{font-size:12px;color:var(--text3);margin:0 0 18px}
+.roster-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;max-height:240px;overflow-y:auto}
+.roster-btn{background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text);text-align:left;transition:.15s}
+.roster-btn:hover{border-color:var(--brand2);background:var(--blue-bg);color:var(--brand2)}
+.roster-btn.selected{border-color:var(--brand2);background:var(--blue-bg);color:var(--brand2)}
+.roster-btn .ra{width:30px;height:30px;border-radius:50%;background:var(--brand2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.roster-divider{font-size:11px;color:var(--text3);text-align:center;margin:8px 0;position:relative}
+.roster-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
+.roster-divider span{background:var(--surface);padding:0 8px;position:relative}
+/* ── COMMENT ENHANCEMENTS ──────────────────────────────────────────────── */
+.username-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);flex-shrink:0}
+.username-bar b{color:var(--brand2);cursor:pointer;text-decoration:underline dotted}
+.emoji-picker{position:absolute;bottom:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;display:none;grid-template-columns:repeat(8,28px);gap:2px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:500;width:240px}
+.emoji-picker.open{display:grid}
+.emoji-picker span{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border-radius:4px}
+.emoji-picker span:hover{background:var(--bg)}
+.mention-dropdown{position:absolute;bottom:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:500;min-width:180px;max-height:160px;overflow-y:auto;display:none}
+.mention-dropdown.open{display:block}
+.mention-item{padding:7px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text)}
+.mention-item:hover,.mention-item.active{background:var(--bg)}
+.comment-mention{color:var(--brand2);font-weight:700;background:#e8f0ff;padding:1px 4px;border-radius:3px}
+.comment-thread{margin-left:36px;border-left:2px solid var(--border);padding-left:10px;margin-top:6px;display:flex;flex-direction:column;gap:6px}
+.comment-actions{display:flex;gap:4px;margin-top:4px;opacity:0;transition:.15s}
+.comment-item:hover .comment-actions{opacity:1}
+.comment-actions button{background:none;border:none;font-size:10px;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:3px;font-family:inherit}
+.comment-actions button:hover{background:var(--bg);color:var(--brand2)}
+.dp-input-wrap{position:relative;flex:1}
+.comment-input-row{display:flex;gap:8px;align-items:flex-end}
+.comment-input{flex:1;border:1px solid var(--border);border-radius:var(--radius2);padding:7px 10px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;resize:none;min-height:36px;max-height:100px;overflow-y:auto}
+.comment-input:focus{border-color:var(--brand2)}
+
+/* ── AUDIT LOG ───────────────────────────────────────────────────── */
+.audit-item{padding:6px 0;border-bottom:1px solid var(--border2);font-size:11px;color:var(--text2);display:flex;gap:6px;align-items:flex-start}
+.audit-item:last-child{border-bottom:none}
+.audit-dot{width:6px;height:6px;border-radius:50%;background:var(--brand2);margin-top:4px;flex-shrink:0}
+.audit-time{color:var(--text3);white-space:nowrap;font-size:10px}
+
+/* ── GANTT VIEW ──────────────────────────────────────────────────── */
+.gantt-wrap{overflow-x:auto;padding-bottom:20px}
+.gantt-table{border-collapse:collapse;min-width:100%}
+.gantt-table td,.gantt-table th{border:1px solid var(--border2);padding:5px 8px;font-size:11px;white-space:nowrap}
+.gantt-table th{background:#3a4f7a;color:#fff;font-weight:700;position:sticky;top:0}
+.gantt-label{background:var(--surface);min-width:220px;max-width:280px;white-space:normal;word-break:break-word}
+.gantt-bar-cell{background:var(--bg);padding:3px 4px;min-width:18px;cursor:default}
+.gantt-bar{height:16px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.gantt-today{background:rgba(255,80,80,.15)!important;border-left:2px solid #f44!important}
+.gantt-month-hdr{background:#2e3a5a!important;text-align:center;font-size:10px}
+
+/* ── BULK ACTION BAR ─────────────────────────────────────────────── */
+.bulk-bar{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--brand);color:#fff;padding:10px 20px;border-radius:24px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:250;align-items:center;gap:12px;font-size:12px;font-weight:600;white-space:nowrap}
+.bulk-bar.open{display:flex}
+.bulk-sep{width:1px;height:16px;background:rgba(255,255,255,.3)}
+
+/* ── SHORTCUTS PANEL ─────────────────────────────────────────────── */
+.shortcuts-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:center;justify-content:center}
+.shortcuts-panel.open{display:flex}
+.shortcuts-box{background:var(--surface);border-radius:var(--radius);padding:24px;width:480px;max-width:92vw;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow2)}
+.shortcuts-box h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px}
+.shortcut-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border2);font-size:12px;color:var(--text2)}
+.shortcut-row:last-child{border-bottom:none}
+
+/* ── MODALS ──────────────────────────────────────────────────────── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:10px;padding:24px;min-width:320px;max-width:440px;width:92%;box-shadow:var(--shadow2)}
+.modal h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;margin-top:12px}
+.modal input,.modal select,.modal textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius2);font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none}
+.modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--brand2)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.modal-note{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5}
+
+/* ── OVERDUE TOAST ───────────────────────────────────────────────── */
+.toast-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:450;align-items:flex-start;justify-content:center;padding-top:60px}
+.toast-bg.open{display:flex}
+.toast{background:var(--surface);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);width:600px;max-width:95vw;max-height:78vh;display:flex;flex-direction:column;overflow:hidden;border-top:4px solid #C00000}
+.toast-hdr{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.toast-hdr h3{font-size:13px;font-weight:700;color:#a33;margin:0}
+.toast-body{overflow-y:auto;padding:10px 16px 14px;flex:1}
+.toast-item{border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:.15s;background:var(--surface)}
+.toast-item:hover{border-color:var(--brand2);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.ti-area{font-size:12px;color:var(--text);line-height:1.4}
+.ti-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.ti-days{font-size:11px;font-weight:700;color:#C00000;white-space:nowrap;padding-top:2px}
+.toast-footer{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--bg)}
+
+/* ── MISC ────────────────────────────────────────────────────────── */
+.hidden{display:none!important}
+.pill-p0{background:#fde8e8;color:#c00;border:1px solid #f0b0b0;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px}
+.pill-p1{background:#fff0d4;color:#a05000;border:1px solid #f0c878;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px}
+.pill-p2{background:#e8f0ff;color:#1a4a9a;border:1px solid #b0c8f0;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px}
+.pill-p3{background:var(--border2);color:var(--text3);border:1px solid var(--border);font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px}
+.dep-badge{display:inline-block;background:#f0e8ff;color:#6020a0;border:1px solid #d0b0f0;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;cursor:pointer} .dep-badge:hover{background:#e0d0ff}
+
+/* Jira Epic Status Cards */
+.jira-epic-card{background:var(--surface);border-radius:8px;padding:14px 16px;flex:1;min-width:260px;max-width:340px;border:1px solid var(--border);border-top:3px solid #0052CC;box-shadow:var(--shadow);position:relative}
+.jira-epic-card.status-done{border-top-color:#4CAF50}
+.jira-epic-card.status-blocked{border-top-color:#C0392B}
+.jira-epic-card.status-inprog{border-top-color:#4a6fa5}
+.jira-status-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:6px}
+.jira-issue-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border2);font-size:11px}
+.jira-issue-row:last-child{border-bottom:none}
+.jira-issue-type{width:14px;height:14px;border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
+.jira-prog-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;flex:1}
+.jira-prog-fill{height:100%;border-radius:3px;transition:width .4s}
+.jira-refresh-btn{position:absolute;top:10px;right:10px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:10px;padding:2px 6px;cursor:pointer;font-family:inherit;z-index:10}
+.jira-refresh-btn:hover{border-color:#0052CC;color:#0052CC}
+@media print{.hdr .hdr-r,.toolbar,.sbar,.legend,.sec-hdr-btns,.act-c,.row-act,.bulk-bar,.detail-panel,.detail-overlay{display:none!important} body{background:#fff} .tracker{padding:0}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-left">
+    <h1 id="tracker-title" onclick="editTitle()" title="Click to rename" style="cursor:pointer;border-radius:4px;padding:2px 6px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='transparent'">📊 BTS Dependency Tracker <span style="font-size:10px;opacity:.4;margin-left:2px">✏️</span></h1>
+    <span class="hdr-badge">v4.0</span>
+    <div class="view-tabs" id="view-tabs">
+      <button class="view-tab active" onclick="switchView('table',this)">📋 Table</button>
+      <button class="view-tab" onclick="switchView('gantt',this)">📅 Gantt</button>
+      <button class="view-tab" onclick="switchView('cards',this)">🃏 Cards</button>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <span id="sync-status"></span>
+    <button class="btn btn-out" onclick="manualRefresh()" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🔄 Refresh</button>
+    <button class="btn btn-out" onclick="window.print()" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🖨️ Print</button>
+    <button class="btn btn-primary" onclick="exportCSV()">⬇️ CSV</button>
+    <button class="btn btn-out" onclick="toggleDark()" id="dark-btn" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)" title="Toggle dark mode">🌙</button>
+    <button class="btn btn-out" onclick="openShortcuts()" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)" title="Keyboard shortcuts">⌨️</button>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar" style="gap:0;padding:0;border-bottom:1px solid var(--border)">
+  <!-- Filter group -->
+  <div style="display:flex;align-items:center;gap:6px;padding:7px 16px;border-right:1px solid var(--border);flex-wrap:wrap">
+    <span style="font-size:10px;font-weight:800;color:var(--brand2);text-transform:uppercase;letter-spacing:.8px;margin-right:4px">Filter</span>
+    <div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1.5px solid var(--brand2);border-radius:6px;padding:3px 8px">
+      <span style="font-size:11px;color:var(--brand2);font-weight:600">Epic</span>
+      <select class="fsel" id="flt-epic" onchange="filterByEpic(this.value)" style="border:none;background:transparent;max-width:180px;padding:2px 4px;font-size:11px;font-weight:600;color:var(--text)">
+        <option value="all">All Epics</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1.5px solid var(--brand2);border-radius:6px;padding:3px 8px" id="status-filter-wrap">
+      <span style="font-size:11px;color:var(--brand2);font-weight:600">Status</span>
+      <select class="fsel" id="flt-status" onchange="filterByStatus(this.value);styleFilterSel(this,'status')" style="border:none;background:transparent;padding:2px 4px;font-size:11px;font-weight:600;color:var(--text)">
+        <option value="all">All</option>
+        <option value="In Progress" style="background:#DDEEFF;color:#1F497D;font-weight:700">🔵 In Progress</option>
+        <option value="Pending" style="background:#FFF2CC;color:#7F6000;font-weight:700">⏳ Pending</option>
+        <option value="Blocked" style="background:#FFE0E0;color:#C00000;font-weight:700">🚫 Blocked</option>
+        <option value="Done" style="background:#E2EFDA;color:#375623;font-weight:700">✅ Done</option>
+        <option value="Delayed" style="background:#C0392B;color:#fff;font-weight:700">🔴 Delayed</option>
+        <option value="At Risk" style="background:#E67E22;color:#fff;font-weight:700">🟠 At Risk</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1.5px solid var(--brand2);border-radius:6px;padding:3px 8px" id="type-filter-wrap">
+      <span style="font-size:11px;color:var(--brand2);font-weight:600">Type</span>
+      <select class="fsel" id="flt-type" onchange="filterByType(this.value);styleFilterSel(this,'type')" style="border:none;background:transparent;padding:2px 4px;font-size:11px;font-weight:600;color:var(--text)">
+        <option value="all">All</option>
+        <option value="dep" style="background:#DDEEFF;color:#1a4a9a;font-weight:700">🔗 Dependency</option>
+        <option value="risk" style="background:#FFF0D4;color:#7a3a00;font-weight:700">⚠️ Risk</option>
+        <option value="req" style="background:#F0E8FF;color:#4a1a7a;font-weight:700">📋 Requirement</option>
+        <option value="issue" style="background:#FFE0E0;color:#C00000;font-weight:700">🐛 Issue</option>
+        <option value="decision" style="background:#FFF2CC;color:#7F6000;font-weight:700">💡 Decision</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1.5px solid var(--brand2);border-radius:6px;padding:3px 8px" id="priority-filter-wrap">
+      <span style="font-size:11px;color:var(--brand2);font-weight:600">Priority</span>
+      <select class="fsel" id="flt-priority" onchange="filterByPriority(this.value);styleFilterSel(this,'priority')" style="border:none;background:transparent;padding:2px 4px;font-size:11px;font-weight:600;color:var(--text)">
+        <option value="all">All</option>
+        <option value="P0" style="background:#fde8e8;color:#c00;font-weight:700">🔴 P0 Critical</option>
+        <option value="P1" style="background:#fff0d4;color:#a05000;font-weight:700">🟠 P1 High</option>
+        <option value="P2" style="background:#e8f0ff;color:#1a4a9a;font-weight:700">🔵 P2 Medium</option>
+        <option value="P3" style="background:#f4f4f4;color:#666;font-weight:700">⚪ P3 Low</option>
+      </select>
+    </div>
+    <button class="btn btn-out" onclick="clearFilters()" style="font-size:11px;padding:3px 10px;height:28px">✕ Clear</button>
+  </div>
+  <!-- Actions group -->
+  <div style="display:flex;align-items:center;gap:8px;padding:7px 16px;border-right:1px solid var(--border)">
+    <button class="btn btn-dark" onclick="openModal('add-epic-modal')" style="height:28px;font-size:11px">＋ Add Epic</button>
+  </div>
+  <!-- Search group -->
+  <div style="display:flex;align-items:center;padding:7px 16px;flex:1">
+    <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1.5px solid var(--brand2);border-radius:6px;padding:3px 10px;width:220px">
+      <span style="color:var(--text3);font-size:12px">🔍</span>
+      <input type="search" id="search-box" placeholder="Search rows..." style="border:none;background:transparent;font-size:11px;color:var(--text);outline:none;width:100%" oninput="doSearch(this.value)">
+    </div>
+  </div>
+</div>
+
+
+<!-- SUMMARY BAR -->
+<div class="sbar">
+  <span class="spill" style="background:#f0f0f0;color:#555" onclick="clearFilters()">Total: <strong id="s-total">0</strong></span>
+  <span class="spill" onclick="quickFilter('Done')" title="Show done items" style="background:var(--green-bg);color:var(--green-text);cursor:pointer">✅ Done: <strong id="s-done">0</strong></span>
+  <span class="spill" style="background:var(--blue-bg);color:var(--blue-text)" onclick="quickFilter('In Progress')" title="Show in progress items" style="background:var(--blue-bg);color:var(--blue-text);cursor:pointer">🔵 In Prog: <strong id="s-inprog">0</strong></span>
+  <span class="spill" style="background:var(--red-bg);color:var(--red);cursor:pointer" onclick="quickFilter('Blocked')" title="Show blocked items">🚫 Blocked: <strong id="s-blk">0</strong></span>
+  <span class="spill" style="background:#FFD7D7;color:var(--red);cursor:pointer" onclick="quickFilter('overdue')" title="Show overdue items">⚠️ Overdue: <strong id="s-ov">0</strong></span>
+  <span class="spill" style="background:var(--yellow-bg);color:var(--yellow-text);cursor:pointer" onclick="quickFilter('Pending')" title="Show pending items">⏳ Pending: <strong id="s-pend">0</strong></span>
+  <span style="font-size:10px;color:var(--text3);font-weight:600;margin-left:8px;white-space:nowrap" id="row-count"></span>
+  <div class="sbar-right" style="display:flex;gap:8px;align-items:center">
+    <button class="btn btn-out" onclick="toggleEpicPanel(this)" id="epic-toggle-btn" style="font-size:11px;border-color:var(--brand2);color:var(--brand2)">▶ Dependency Summary</button>
+    <button class="btn btn-out" onclick="toggleJiraEpicPanel(this)" id="jira-epic-toggle-btn" style="font-size:11px;border-color:#0052CC;color:#0052CC">▶ Jira Epic Status</button>
+  </div>
+</div>
+<div class="epic-panel" id="epic-panel"></div>
+
+<!-- LEGEND -->
+<!-- JIRA EPIC STATUS PANEL -->
+<div id="jira-epic-panel" style="display:none;padding:10px 20px 14px;background:var(--bg);border-bottom:2px solid #0052CC;flex-wrap:wrap;gap:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:8px"><span style="font-size:11px;color:var(--text3)" id="jira-cache-note">📋 Showing cached data</span><button id="jira-refresh-all-btn" onclick="loadJiraEpicStatus(true)" style="background:var(--brand2);color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600">↻ Refresh All from Jira</button></div>
+  <div id="jira-epic-panel-inner" style="display:flex;flex-wrap:wrap;gap:12px;width:100%">
+    <div style="width:100%;text-align:center;padding:20px;color:var(--text3);font-size:13px" id="jira-epic-loading">
+      Click "▶ Jira Epic Status" to load live data from Jira
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ── BULK ACTION BAR ── -->
+<div class="bulk-bar" id="bulk-bar">
+  <span id="bulk-count">0 selected</span>
+  <div class="bulk-sep"></div>
+  <select id="bulk-status-sel" style="padding:4px 8px;border-radius:4px;font-size:11px;border:1px solid rgba(255,255,255,.4);background:#fff;color:#1a2035;font-family:inherit;font-weight:600">
+    <option value="" style="color:#888">Set Status…</option>
+    <option style="color:#1F497D;background:#DDEEFF">In Progress</option>
+    <option style="color:#7F6000;background:#FFF2CC">Pending</option>
+    <option style="color:#C00000;background:#FFE0E0">Blocked</option>
+    <option style="color:#375623;background:#E2EFDA">Done</option>
+    <option style="color:#fff;background:#C0392B">Delayed</option>
+    <option style="color:#fff;background:#E67E22">At Risk</option>
+  </select>
+  <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border-color:rgba(255,255,255,.3)" onclick="bulkSetStatus()">Apply</button>
+  <div class="bulk-sep"></div>
+  <button class="btn" style="background:rgba(255,80,80,.3);color:#fff;border-color:rgba(255,80,80,.4)" onclick="bulkDelete()">🗑 Delete</button>
+  <button class="btn" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2)" onclick="clearSelection()">✕ Clear</button>
+</div>
+
+<!-- MAIN CONTENT AREA -->
+<div class="tracker">
+  <div id="view-table" class="view-pane active">
+    <div id="tracker-inner"></div>
+  </div>
+  <div id="view-gantt" class="view-pane">
+    <div id="gantt-inner"></div>
+  </div>
+  <div id="view-cards" class="view-pane">
+    <div id="cards-inner"></div>
+  </div>
+</div>
+
+
+
+<!-- ── SHORTCUTS PANEL ── -->
+<div class="shortcuts-panel" id="shortcuts-panel" onclick="e=>e.target===this&&closeShortcuts()">
+  <div class="shortcuts-box">
+    <h3>⌨️ Keyboard Shortcuts</h3>
+    <div class="shortcut-row"><span>Open search</span><span><kbd class="kbd">/</kbd></span></div>
+    <div class="shortcut-row"><span>Add row to focused section</span><span><kbd class="kbd">N</kbd></span></div>
+    <div class="shortcut-row"><span>Toggle dark mode</span><span><kbd class="kbd">D</kbd></span></div>
+    <div class="shortcut-row"><span>Close panel / modal</span><span><kbd class="kbd">Esc</kbd></span></div>
+    <div class="shortcut-row"><span>Select all visible rows</span><span><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">A</kbd></span></div>
+    <div class="shortcut-row"><span>Switch to Table view</span><span><kbd class="kbd">1</kbd></span></div>
+    <div class="shortcut-row"><span>Switch to Gantt view</span><span><kbd class="kbd">2</kbd></span></div>
+    <div class="shortcut-row"><span>Switch to Cards view</span><span><kbd class="kbd">3</kbd></span></div>
+    <div class="shortcut-row"><span>Show this panel</span><span><kbd class="kbd">?</kbd></span></div>
+    <div style="margin-top:14px;text-align:right"><button class="btn btn-primary" onclick="closeShortcuts()">Done</button></div>
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="modal-bg" id="add-sec-modal">
+  <div class="modal">
+    <h3>➕ Add Section</h3>
+    <label>Emoji</label><input id="ns-emoji" value="📌" style="width:60px">
+    <label>Section Name</label><input id="ns-name" placeholder="e.g. Engineering">
+    <label>Number of Rows</label><input id="ns-rows" type="number" value="2" min="1" max="20">
+    <div class="modal-actions">
+      <button class="btn btn-out" onclick="closeModal('add-sec-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddSec()">Add Section</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="rename-sec-modal">
+  <div class="modal">
+    <h3>✏️ Rename Section</h3>
+    <label>Emoji</label><input id="rs-emoji" style="width:60px">
+    <label>Section Name</label><input id="rs-name" placeholder="Section name...">
+    <div class="modal-actions">
+      <button class="btn btn-out" onclick="closeModal('rename-sec-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmRenameSec()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="add-epic-modal">
+  <div class="modal">
+    <h3>➕ Add Epic</h3>
+    <label>Jira ID</label><input id="ne-jira" placeholder="SPG-12345">
+    <label>Epic Name</label><input id="ne-name" placeholder="Feature name...">
+    <label>Assignee (optional)</label><input id="ne-assignee" placeholder="Name...">
+    <div class="modal-actions">
+      <button class="btn btn-out" onclick="closeModal('add-epic-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddEpic()">Add Epic</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="add-col-modal">
+  <div class="modal">
+    <h3>➕ Add Column</h3>
+    <label>Column Name</label><input id="nc-name" placeholder="e.g. Priority, Notes, Team...">
+    <label>Width (px)</label><input id="nc-width" type="number" value="120" min="60" max="400">
+    <div class="modal-actions">
+      <button class="btn btn-out" onclick="closeModal('add-col-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddCol()">Add Column</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIELD LEGEND (shown below toolbar) -->
+<!-- DETAIL PANEL -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="dp-header">
+    <div class="dp-title" id="dp-title">Row Details</div>
+    <button class="btn-ghost" onclick="closeDetail()" style="font-size:18px;padding:4px 8px;color:var(--text3)">✕</button>
+  </div>
+  <div class="dp-content" id="dp-body" style="flex:1;overflow-y:auto;padding:20px"></div>
+  <div id="dp-username-bar" class="username-bar">
+    <span>Commenting as</span>
+    <b id="dp-username-display" onclick="changeUsername()">You</b>
+    <span style="margin-left:auto;font-size:10px;color:var(--text3)">Click name to change</span>
+  </div>
+  <div id="dp-footer" style="flex-shrink:0;border-top:1px solid var(--border);background:var(--surface);padding:10px 14px;display:flex;gap:8px;align-items:flex-end">
+    <div class="dp-input-wrap">
+      <textarea class="comment-input" id="dp-comment-input-footer" placeholder="Add a comment… (@mention, 😊 emoji)" rows="2" style="width:100%;padding-right:36px"></textarea>
+      <div id="mention-dropdown" class="mention-dropdown"></div>
+      <div id="emoji-picker" class="emoji-picker">
+        <span>👍</span><span>✅</span><span>⚠️</span><span>🔗</span><span>🐛</span><span>💡</span><span>📋</span><span>🎯</span>
+        <span>🚀</span><span>⏳</span><span>🔴</span><span>🟠</span><span>🟡</span><span>🟢</span><span>🔵</span><span>⚡</span>
+        <span>💬</span><span>📌</span><span>🏷️</span><span>🔒</span><span>🔓</span><span>📅</span><span>👤</span><span>🤝</span>
+        <span>❌</span><span>❓</span><span>💥</span><span>🎉</span><span>👀</span><span>📝</span><span>🛠️</span><span>🏃</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+      <button onclick="toggleEmojiPicker()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px" title="Emoji">😊</button>
+      <button class="btn btn-primary" id="dp-send-btn" style="height:28px;font-size:11px">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEAM ROSTER MODAL -->
+<div class="roster-modal-bg" id="roster-modal">
+  <div class="roster-modal">
+    <h3>👤 Who are you?</h3>
+    <p>Pick your name from the team roster so your comments are attributed correctly.</p>
+    <div class="roster-grid" id="roster-grid"></div>
+    <div class="roster-divider"><span>Not in the list?</span></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="roster-custom-input" placeholder="Type your name…" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none">
+      <button class="btn btn-primary" onclick="confirmRosterCustom()" style="flex-shrink:0">Add Me</button>
+    </div>
+    <div style="margin-top:6px;font-size:11px;color:var(--text3)">Your name will be saved for all future comments on this device.</div>
+  </div>
+</div>
+
+<!-- TEAM ROSTER MODAL -->
+<div class="roster-modal-bg" id="roster-modal">
+  <div class="roster-modal">
+    <h3>👤 Who are you?</h3>
+    <p>Pick your name so your comments are attributed correctly.</p>
+    <div class="roster-grid" id="roster-grid"></div>
+    <div class="roster-divider"><span>Not in the list?</span></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="roster-custom-input" placeholder="Type your name…" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none" onkeydown="if(event.key==='Enter')confirmRosterCustom()">
+      <button class="btn btn-primary" onclick="confirmRosterCustom()">Add Me</button>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--text3)">Saved on this device for all future sessions.</div>
+  </div>
+</div>
+
+<!-- PRD LINK MODAL -->
+<div class="modal-bg" id="prd-link-modal">
+  <div class="modal" style="max-width:480px">
+    <h3>🔗 Link PRD to Epic</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Store the PRD link for this epic so the "Update PRD" button knows where to send decisions.</p>
+    <label>PRD URL</label>
+    <input id="prd-url-input" placeholder="https://wiki.corp.adobe.com/... or https://docs.google.com/...">
+    <label style="margin-top:12px">PRD Type</label>
+    <select id="prd-type-select" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px" onchange="updatePRDTypeNote()">
+      <option value="confluence">📄 Confluence (wiki.corp.adobe.com)</option>
+      <option value="gdoc">📝 Google Doc (docs.google.com)</option>
+      <option value="sharepoint">🗂️ SharePoint</option>
+      <option value="jira">🔗 Jira — post as comment on epic</option>
+    </select>
+    <div id="prd-type-note" style="margin-top:10px;padding:10px 12px;border-radius:6px;font-size:12px;background:var(--bg);border:1px solid var(--border);color:var(--text2);line-height:1.6"></div>
+    <div class="modal-actions">
+      <button class="btn btn-out" onclick="closeModal('prd-link-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmPRDLink()">Save PRD Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPDATE PRD MODAL -->
+<div class="modal-bg" id="update-prd-modal">
+  <div class="modal" style="max-width:500px">
+    <h3>📝 Update PRD with Decision</h3>
+    <div id="update-prd-body" style="font-size:13px;color:var(--text2);line-height:1.6"></div>
+    <div class="modal-actions" id="update-prd-actions">
+      <button class="btn btn-out" onclick="closeModal('update-prd-modal')">Cancel</button>
+    </div>
+    <div id="update-prd-result" style="margin-top:10px;font-size:12px;display:none"></div>
+  </div>
+</div>
+
+<!-- JIRA SYNC MODAL -->
+<div class="modal-bg" id="jira-sync-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>⟳ Sync to Jira</h3>
+    <div id="jira-sync-body" style="font-size:13px;color:var(--text2);line-height:1.6"></div>
+    <div class="modal-actions" id="jira-sync-actions">
+      <button class="btn btn-out" onclick="closeModal('jira-sync-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- JIRA ROW SYNC MODAL -->
+<div class="modal-bg" id="jira-row-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>⟳ Push Row to Jira</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">This will create a Dependency issue in Jira linked to the epic. Fill in required fields below.</p>
+    <label>Product Area</label>
+    <select id="jr-area" class="fsel" style="width:100%;margin-bottom:8px;padding:6px 8px">
+      <option value="216305">Express Student → Bloom - Video</option>
+      <option value="216306">Express Student → Bloom - Comic strip</option>
+      <option value="216307">Express Student → Classroom Workflows</option>
+      <option value="216300">Express Student (general)</option>
+      <option value="216309">Student Spaces</option>
+      <option value="216316">Acrobat Express</option>
+    </select>
+    <label>Dependency Type</label>
+    <select id="jr-dep" class="fsel" style="width:100%;margin-bottom:8px;padding:6px 8px">
+      <option value="216331">Design</option>
+      <option value="216333">Content</option>
+      <option value="216335">Marketing</option>
+      <option value="216336">Legal</option>
+      <option value="216332">Data Science</option>
+      <option value="216337">AUP - ACPC</option>
+      <option value="216338">AUP - Identity</option>
+      <option value="216339">AUP - Mars</option>
+      <option value="216340">AUP - Commerce</option>
+      <option value="216334">Community</option>
+    </select>
+    <label>Category</label>
+    <select id="jr-cat" class="fsel" style="width:100%;margin-bottom:8px;padding:6px 8px">
+      <option value="216341">Planned Feature</option>
+      <option value="216342">Injection or New Scope</option>
+    </select>
+    <div id="jr-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:12px;margin-top:8px;line-height:1.6"></div>
+    <div class="modal-actions" id="jira-row-actions">
+      <button class="btn btn-out" onclick="closeModal('jira-row-modal')">Cancel</button>
+      <button class="btn btn-primary" id="jr-confirm-btn">🚀 Create in Jira</button>
+    </div>
+    <div id="jr-result" style="margin-top:10px;font-size:12px;display:none"></div>
+  </div>
+</div>
+
+<!-- OVERDUE TOAST -->
+<div class="toast-bg" id="overdue-toast">
+  <div class="toast">
+    <div class="toast-hdr"><h3>⚠️ Overdue Dependencies</h3><span id="toast-count" style="font-size:11px;color:var(--text3)"></span></div>
+    <div class="toast-body" id="toast-body"></div>
+    <div class="toast-footer">
+      <button class="btn btn-out" onclick="closeToast(false)">Dismiss</button>
+      <button class="btn btn-primary" onclick="closeToast(true)">Auto-set Delayed & Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const JIRA_BASE = 'https://jira.corp.adobe.com/browse/';
+const JIRA_API = 'https://jira.corp.adobe.com/rest/api/2';
+const FB_URL = 'https://bts-tracker-50aa1-default-rtdb.firebaseio.com/bts-tracker/v2.json?auth=AIzaSyAkbUcaBkZzdES9CwcL4Us4YpFxmkD18D0';
+const SC = {
+  "Done":        ["#E2EFDA","#375623"],
+  "In Progress": ["#DDEEFF","#1F497D"],
+  "Pending":     ["#FFF2CC","#7F6000"],
+  "Blocked":     ["#FFE0E0","#C00000"],
+  "Delayed":     ["#C0392B","#ffffff"],
+  "At Risk":     ["#E67E22","#ffffff"]
+};
+const STATUSES = ["","In Progress","Pending","Blocked","Done","Delayed","At Risk"];
+const PRIORITIES = ["","P0","P1","P2","P3"];
+const ITEM_TYPES = [
+  {val:'',        label:'—',           color:'',        bg:'',        icon:''},
+  {val:'dep',     label:'Dependency',  color:'#1a4a9a', bg:'#DDEEFF', icon:'🔗'},
+  {val:'risk',    label:'Risk',        color:'#7a3a00', bg:'#FFF0D4', icon:'⚠️'},
+  {val:'req',     label:'Requirement', color:'#4a1a7a', bg:'#F0E8FF', icon:'📋'},
+  {val:'issue',   label:'Issue',       color:'#C00000', bg:'#FFE0E0', icon:'🐛'},
+  {val:'decision',label:'Decision',    color:'#7F6000', bg:'#FFF2CC', icon:'💡'},
+];
+function getItemType(val){ return ITEM_TYPES.find(t=>t.val===val)||ITEM_TYPES[0]; }
+const PCOLS = {"P0":"#fde8e8","P1":"#fff0d4","P2":"#e8f0ff","P3":"#f4f4f4"};
+const PTXT  = {"P0":"#c00","P1":"#a05000","P2":"#1a4a9a","P3":"#888"};
+
+// Core columns
+const CORE_COLS = [
+  {key:'area',    label:'Area / Item',        width:320,  core:true},
+  {key:'itype',   label:'Type',               width:130,  core:true},
+  {key:'owner',   label:'Owner',              width:130,  core:true},
+  {key:'priority',label:'Priority',           width:90,   core:true},
+  {key:'status',  label:'Status',             width:150,  core:true},
+  {key:'eta',     label:'ETA',                width:120,  core:true},
+  {key:'blockers',label:'Latest Updates/Notes',   width:240,  core:true},
+  {key:'decision',label:'Final Decision',     width:220,  core:true},
+];
+let extraCols = [];
+function allCols(){return [...CORE_COLS,...extraCols];}
+
+const DEF_SECS=[{emoji:"🎨",name:"Design – Video BTS",rows:[{},{},{}]},{emoji:"📱",name:"Design – Mobile / Tablet",rows:[{},{},{}]},{emoji:"📋",name:"Product",rows:[{},{},{}]},{emoji:"🎤",name:"Legal / Ethics",rows:[{},{}]},{emoji:"📣",name:"Marketing",rows:[{},{}]},{emoji:"✏️",name:"Content",rows:[{},{}]},{emoji:"💰",name:"COGs",rows:[{},{}]},{emoji:"🔥",name:"Firefly Team",rows:[{},{}]}];
+const EPIC0=[{emoji:"🎨",name:"Design – Video BTS",rows:[{area:"Theme icons for animated video maker that are not present in comic creator",owner:"Uriel",priority:"P1",status:"",eta:"",blockers:""},{area:"UI experience when photorealistic or classroom themes is selected because surprise me workflow will only work for these themes",owner:"Uriel",priority:"P1",status:"",eta:"",blockers:""},{area:"Home screen tile for animated video maker",owner:"Uriel",priority:"P2",status:"",eta:"",blockers:""},{area:"Logged out - copy doc for one free comic messaging",owner:"Uriel",priority:"P2",status:"",eta:"",blockers:""},{area:"Logged out - what will be the experience when user has already generated one comic, and they enter comic strip again",owner:"Uriel",priority:"P2",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""}]},{emoji:"📱",name:"Design – Mobile / Tablet",rows:[{area:"Ipad and mobile designs for video. Ipad is p0 and mobile is p1 for BTS as confirmed by Ali",owner:"Uriel",priority:"P0",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""}]},{emoji:"📋",name:"Product",rows:[{area:"When a video is opened from your stuff, it will open as a complete one video of 32 or 40 seconds",owner:"Ali",priority:"P1",status:"",eta:"",blockers:""},{area:"Audience and geos expected for animated video maker",owner:"Ali",priority:"P1",status:"",eta:"",blockers:""},{area:"Throttling limits for videos",owner:"Ali",priority:"P1",status:"",eta:"",blockers:""},{area:"List of supported platforms for videos",owner:"Ali",priority:"P2",status:"",eta:"",blockers:""},{area:"Supported audio languages for videos",owner:"Ali",priority:"P2",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""}]},{emoji:"🎤",name:"Legal / Ethics",rows:[{area:"",owner:"",priority:"",status:"",eta:"",blockers:""},{area:"Ethics Evaluation",owner:"Siddhant",priority:"P0",status:"Pending",eta:"2025-07-10",blockers:""}]},{emoji:"📣",name:"Marketing",rows:[{area:"",owner:"",priority:"",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""}]},{emoji:"✏️",name:"Content",rows:[{area:"Prompt Dropdown text | Names for themes | Update thumbnails | Approve 10 Exemplar Videos",owner:"Rebecca, Tanya",priority:"P1",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""}]},{emoji:"💰",name:"COGs",rows:[{area:"",owner:"",priority:"",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""}]},{emoji:"🔥",name:"Firefly Team",rows:[{area:"",owner:"",priority:"",status:"",eta:"",blockers:""},{area:"",owner:"",priority:"",status:"",eta:"",blockers:""}]}];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let epics=[
+  ["SPG-17032","[Acq] Bloom: Explainer Video Generator BTS","Rahul Saraogi"],
+  ["SPG-17249","[Acq] Bloom Comic Creator - Creator Mode BTS","Aastha"],
+  ["SPG-17139","[Acq] Bloom Logged-Out Comic Creator BTS","Puneet Gupta"],
+  ["SPG-17621","Comic Creator: Tablet Expansion","Varun Varshney"],
+  ["SPG-17622","Comic Creator: Budget & Throttling Safeguards",""],
+  ["SPG-17250","[Acq] Bloom Logged-Out Video Creator Experience","Varun Varshney"]
+];
+let sections=[];
+let comments={};   // key: "ei-si-ri" => [{author,text,ts}]
+let auditLog=[];   // [{ts,text}]
+let selectedRows=new Set();
+let _addSecFor=null, _renameSecFor=null;
+let prdLinks={};  // {epicIdx: {url, type}} type = 'confluence'|'gdoc'|'jira'
+let _dragSec=null, _dragCol=null;
+let _detailKey=null;
+let _currentView='table';
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function xe(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function isOverdue(eta,status){if(!eta||status==='Done')return false;const t=new Date();t.setHours(0,0,0,0);return new Date(eta)<t;}
+function isPastDue(eta){if(!eta)return false;const t=new Date();t.setHours(0,0,0,0);return new Date(eta)<t;}
+function autoGrow(ta){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight+2,120)+'px';}
+function fmtDate(d){if(!d)return'';const p=d.split('-');return p.length===3?`${p[1]}/${p[2]}/${p[0].slice(2)}`:d;}
+function nowStr(){return new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function genId(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+// rowKey returns a STABLE identity for a row (its .id), not a positional index.
+// This ensures comments stay attached to the correct row even after rows/sections/epics
+// are added, deleted, or reordered. If a row doesn't have an id yet (e.g. loaded from
+// before this fix, or a hardcoded default row), one is assigned on first access and any
+// comments previously saved under the old positional key ("ei-si-ri") are migrated over.
+function rowKey(ei,si,ri){
+  const row=sections[ei]&&sections[ei][si]&&sections[ei][si].rows&&sections[ei][si].rows[ri];
+  if(!row)return`${ei}-${si}-${ri}`;
+  if(!row.id){
+    row.id=genId();
+    const oldKey=`${ei}-${si}-${ri}`;
+    if(comments[oldKey]&&!comments[row.id]){comments[row.id]=comments[oldKey];delete comments[oldKey];}
+  }
+  return row.id;
+}
+function logAudit(msg){auditLog.unshift({ts:nowStr(),text:msg});if(auditLog.length>200)auditLog.pop();}
+function initRow(){const r={id:genId(),area:'',itype:'',owner:'',priority:'',status:'',eta:'',blockers:'',decision:''};extraCols.forEach(c=>{r[c.key]='';});return r;}
+
+// ── FIREBASE ─────────────────────────────────────────────────────────────────
+function setStatus(msg,color){const el=document.getElementById('sync-status');el.textContent=msg;el.style.color=color||'rgba(255,255,255,.5)';}
+
+async function loadFromFirebase(){
+  try{
+    const res=await fetch(FB_URL);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    let data=await res.json();
+    // Firebase is source of truth
+    if(data&&data.sections&&Array.isArray(data.sections)){
+      if(!_bootComplete){
+        // ── BOOT LOAD: Replace sections entirely — preserves order and deletions ──
+        data.sections.forEach((savedEpicSecs,savedEi)=>{
+          const savedJira=(data.epics||[])[savedEi]?.[0];
+          if(!savedJira)return;
+          const localEi=epics.findIndex(([j])=>j===savedJira);
+          if(localEi<0)return;
+          if(!Array.isArray(savedEpicSecs))return;
+          // Full replace — Firebase order and deletions are respected
+          sections[localEi]=savedEpicSecs.filter(s=>s&&s.name);
+        });
+        if(data.epics&&Array.isArray(data.epics))epics=data.epics;
+      } else {
+        // ── BACKGROUND POLL: Row-level merge — respect _ts to avoid overwriting active edits ──
+        data.sections.forEach((savedEpicSecs,savedEi)=>{
+          const savedJira=(data.epics||[])[savedEi]?.[0];
+          if(!savedJira)return;
+          const localEi=epics.findIndex(([j])=>j===savedJira);
+          if(localEi<0)return;
+          if(!Array.isArray(savedEpicSecs))return;
+          // Replace section structure (handles reorder/delete from other users)
+          const newSecs=savedEpicSecs.filter(s=>s&&s.name);
+          newSecs.forEach((savedSec,si)=>{
+            const localSi=sections[localEi].findIndex(s=>s.name===savedSec.name);
+            if(localSi>=0&&Array.isArray(savedSec.rows)){
+              savedSec.rows.forEach((savedRow,ri)=>{
+                if(ri<sections[localEi][localSi].rows.length){
+                  const localRow=sections[localEi][localSi].rows[ri];
+                  const localTs=localRow._ts||0;
+                  const savedTs=savedRow._ts||0;
+                  if(savedTs>=localTs) Object.assign(localRow,savedRow);
+                }else{
+                  sections[localEi][localSi].rows.push(savedRow);
+                }
+              });
+              if(savedSec.rows.length<sections[localEi][localSi].rows.length)
+                sections[localEi][localSi].rows.length=savedSec.rows.length;
+            }
+          });
+          // Apply section order + deletions from Firebase
+          sections[localEi]=newSecs.map(savedSec=>{
+            const existing=sections[localEi].find(s=>s.name===savedSec.name);
+            return existing||savedSec;
+          });
+        });
+      }
+      if(data.extraCols&&Array.isArray(data.extraCols))extraCols=data.extraCols;
+      if(data.comments)comments=data.comments;
+      if(data.auditLog&&Array.isArray(data.auditLog))auditLog=data.auditLog;
+      if(data.prdLinks)prdLinks=data.prdLinks;
+      if(data.savedAt){_lastFirebaseSavedAt=data.savedAt;}
+      setStatus('✅ '+new Date().toLocaleTimeString(),'#6abf60');
+      return true;
+    }
+  }catch(e){setStatus('⚠️ Offline','#e6a817');}
+  return false;
+}
+
+let _lastSavedTs = null;
+let _lastEditTime = null;
+let _bootComplete = false;
+let _lastFirebaseSavedAt = 0;
+ // true after first Firebase load
+async function saveToFirebase(){
+  _lastEditTime = Date.now();
+  const now = Date.now();
+  setStatus('💾 Saving…','#e6a817');
+  try{
+    await fetch(FB_URL,{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({epics,sections,extraCols,comments,auditLog,prdLinks,lastUpdated:new Date().toISOString(),savedAt:Date.now()})});
+    _lastFirebaseSavedAt = now;
+    setStatus('✅ '+new Date().toLocaleTimeString(),'#6abf60');
+  }catch(e){setStatus('⚠️ Save failed','#ff6060');}
+}
+
+async function manualRefresh(){setStatus('⏳ Refreshing…','#aaa');_bootComplete=false;await loadFromFirebase();_bootComplete=true;renderAll();}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+function initSections(){
+  sections=epics.map((_,ei)=>{
+    if(ei===0)return JSON.parse(JSON.stringify(EPIC0));
+    return DEF_SECS.map(s=>({emoji:s.emoji,name:s.name,rows:s.rows.map(()=>initRow())}));
+  });
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+function renderAll(){
+  // Save current state before re-render
+  const scrollY = window.scrollY;
+  const epicVal  = document.getElementById('flt-epic')?.value   || 'all';
+  const statVal  = document.getElementById('flt-status')?.value || 'all';
+  const typeVal  = document.getElementById('flt-type')?.value   || 'all';
+  const prioVal  = document.getElementById('flt-priority')?.value|| 'all';
+  const srchVal  = document.getElementById('search-box')?.value || '';
+
+  render();
+  if(_currentView==='gantt')renderGantt();
+  if(_currentView==='cards')renderCards();
+  updateEpicDropdown();updateDashboard();updateRowCount();updateEpicCards();
+
+  // Re-apply all active filters after DOM rebuild
+  if(epicVal!=='all') filterByEpic(epicVal);
+  if(statVal!=='all') filterByStatus(statVal);
+  if(typeVal!=='all') filterByType(typeVal);
+  if(prioVal!=='all') filterByPriority(prioVal);
+  if(srchVal)         doSearch(srchVal);
+
+  // Restore scroll position
+  requestAnimationFrame(()=>window.scrollTo(0, scrollY));
+}
+
+// ── TABLE VIEW ────────────────────────────────────────────────────────────────
+function render(){
+  const wrap=document.getElementById('tracker-inner');
+  wrap.innerHTML='';
+  epics.forEach(([jira,name],ei)=>{
+    const block=document.createElement('div');
+    block.className='epic-block';block.dataset.ei=ei;
+
+    // Rail
+    const rail=document.createElement('div');
+    rail.className='epic-rail';
+    const assignee=epics[ei][2]||'';
+    rail.innerHTML=`
+      <a href="${JIRA_BASE}${jira}" target="_blank" class="epic-badge">${jira}</a>
+      <span class="epic-name">${xe(name)}</span>
+      ${assignee?`<span class="epic-assignee">👤 ${xe(assignee)}</span>`:''}
+      <a href="${JIRA_BASE}${jira}" target="_blank" class="epic-link">↗ Jira</a>
+      <div class="epic-rail-btns">
+        <button class="btn-rail-g" onclick="openAddSecModal(${ei})">＋ Section</button>
+        <button class="btn-rail-g" onclick="openPRDLinkModal(${ei})" style="background:${prdLinks[ei]?'#e8f0ff':'var(--surface)'};border-color:${prdLinks[ei]?'#0052CC':'#b8d4b0'};color:${prdLinks[ei]?'#0052CC':'var(--green)'}">
+          ${prdLinks[ei]?'📄 PRD Linked':'🔗 Link PRD'}
+        </button>
+        <button class="btn-rail-r" onclick="delEpic(${ei})">✕ Delete</button>
+      </div>`;
+    block.appendChild(rail);
+
+    const content=document.createElement('div');
+    content.className='epic-content';
+    content.style.cssText='overflow:hidden;flex:1;min-width:0';
+
+    (sections[ei]||[]).forEach((sec,si)=>{
+      // Section header
+      const secHdr=document.createElement('div');
+      secHdr.className='sec-hdr';secHdr.draggable=true;
+      secHdr.dataset.ei=ei;secHdr.dataset.si=si;
+      const commentCount=(()=>{let c=0;(sec.rows||[]).forEach((_,ri)=>{c+=(comments[rowKey(ei,si,ri)]||[]).length;});return c;})();
+      secHdr.innerHTML=`
+        <div class="sec-hdr-left">
+          <span class="sec-drag-handle" title="Drag to reorder">⠿</span>
+          <span>${xe(sec.emoji)} ${xe(sec.name)}</span>
+          <span id="sec-pencil-${ei}-${si}" onclick="inlineRenameSection(event,${ei},${si});event.stopPropagation()" onmousedown="event.stopPropagation()" title="Rename section" style="cursor:pointer;opacity:.5;font-size:11px;margin-left:4px;padding:2px 4px;border-radius:3px" onmouseover="this.style.opacity=1;this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.opacity=.5;this.style.background='transparent'">✏️</span>
+          ${commentCount?`<span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">💬 ${commentCount}</span>`:''}
+        </div>
+        <div class="sec-hdr-btns">
+          <button class="btn-sec btn-sec-g" onclick="addRow(${ei},${si});event.stopPropagation()">＋ Row</button>
+          <button class="btn-sec" style="background:#0052CC;border-color:#0047b3;color:#fff;font-size:11px;font-weight:600;padding:2px 9px;border-radius:3px;cursor:pointer" onclick="openJiraSync(${ei},${si});event.stopPropagation()" title="Sync this section to Jira">⟳ Jira</button>
+          <button class="btn-sec btn-sec-r" onclick="delSec(${ei},${si});event.stopPropagation()">✕ Section</button>
+        </div>`;
+      secHdr.addEventListener('dragstart',e=>{_dragSec={ei,si};e.dataTransfer.effectAllowed='move';secHdr.style.opacity='.5';});
+      secHdr.addEventListener('dragend',()=>{secHdr.style.opacity='1';_dragSec=null;});
+      secHdr.addEventListener('dragover',e=>{e.preventDefault();secHdr.classList.add('drag-over');});
+      secHdr.addEventListener('dragleave',()=>secHdr.classList.remove('drag-over'));
+      secHdr.addEventListener('drop',e=>{
+        e.preventDefault();secHdr.classList.remove('drag-over');
+        if(!_dragSec)return;
+        const{ei:fei,si:fsi}=_dragSec;
+        const tei=parseInt(secHdr.dataset.ei),tsi=parseInt(secHdr.dataset.si);
+        if(fei!==tei||fsi===tsi)return;
+        structuralChange(()=>{const m=sections[fei].splice(fsi,1)[0];sections[tei].splice(fsi<tsi?tsi-1:tsi,0,m);});
+      });
+      content.appendChild(secHdr);
+
+      // Table
+      const cols=allCols();
+      const tbl=document.createElement('table');
+      const cg=cols.map(c=>`<col style="width:${c.width?c.width+'px':'300px'}">`).join('');
+      tbl.innerHTML=`<colgroup><col style="width:32px">${cg}<col style="width:70px"></colgroup>
+      <thead><tr>
+        <th style="text-align:center">
+          <input type="checkbox" title="Select/deselect all in section" onclick="toggleSectionCheckbox(${ei},${si})" ${(sections[ei][si].rows||[]).length&&(sections[ei][si].rows||[]).every((_,ri)=>selectedRows.has(rowKey(ei,si,ri)))?'checked':''} style="cursor:pointer">
+        </th>
+        ${cols.map((c,ci)=>`
+          <th data-ci="${ci}"
+            ondragover="colDragOver(event)"
+            ondragleave="colDragLeave(event)"
+            ondrop="colDrop(event,${ci})">
+            <span class="col-drag-handle" draggable="true"
+              ondragstart="colDragStart(event,${ci})"
+              ondragend="colDragEnd(event)"
+              style="cursor:grab;padding:2px 4px;margin-right:2px">⠿</span>
+            <span id="col-label-${ci}">${xe(c.label)}</span>
+            ${c.key==='blockers'?`<span title="Type a quick update — it auto-posts to the comment thread with your name &amp; timestamp after 8 seconds of no typing.&#10;&#10;Click the 💬 icon or use the detail panel for important comments that should sync to Jira." style="cursor:help;font-size:13px;color:rgba(255,255,255,.9);margin-left:5px;vertical-align:middle;opacity:1">ℹ️</span>`:''}
+            <span onclick="startColRenameById(event,${ci})" title="Rename column" style="cursor:pointer;opacity:.5;font-size:11px;margin-left:3px;vertical-align:middle">✏️</span>
+            ${!c.core?`<button onclick="delCol(${ci})" style="background:none;border:none;color:rgba(255,150,150,.8);cursor:pointer;margin-left:2px;font-size:10px" title="Remove column">✕</button>`:''}
+          </th>`).join('')}
+        <th style="text-align:center">
+          <button onclick="openModal('add-col-modal')" style="background:none;border:none;color:rgba(180,210,255,.9);cursor:pointer;font-size:14px;font-weight:700;line-height:1" title="Add column">＋</button>
+        </th>
+      </tr></thead>`;
+      const tbody=document.createElement('tbody');
+      (sec.rows||[]).forEach((row,ri)=>tbody.appendChild(makeRow(ei,si,ri,row)));
+      tbl.appendChild(tbody);
+      const tblWrap=document.createElement('div');
+      tblWrap.style.cssText='overflow-x:auto;width:100%';
+      tblWrap.appendChild(tbl);
+      content.appendChild(tblWrap);
+    });
+
+    block.appendChild(content);
+    wrap.appendChild(block);
+  });
+}
+
+function makeRow(ei,si,ri,row){
+  const tr=document.createElement('tr');
+  const key=rowKey(ei,si,ri);
+  tr.className='drow'+(ri%2===1?' alt':'')+(selectedRows.has(key)?' selected':'');
+  tr.dataset.ei=ei;tr.dataset.si=si;tr.dataset.ri=ri;tr.dataset.key=key;
+
+  const so=STATUSES.map(s=>{
+    const sc2=SC[s]||['#f8f8f8','#333'];
+    return `<option value="${s}" ${row.status===s?'selected':''} style="background:${sc2[0]};color:${sc2[1]};font-weight:${row.status===s?'700':'400'}">${s||'Select…'}</option>`;
+  }).join('');
+  const po=PRIORITIES.map(p=>`<option value="${p}" ${row.priority===p?'selected':''}>${p||'—'}</option>`).join('');
+  const ss=SC[row.status]?`background:${SC[row.status][0]};color:${SC[row.status][1]};border-color:${SC[row.status][1]}44`:'';
+  const ov=isPastDue(row.eta)&&row.status!=='Done'?' ov':'';
+  const cmtCount=(comments[key]||[]).length;
+
+  let cells=`<td class="num-c">
+    <input type="checkbox" ${selectedRows.has(key)?'checked':''} onchange="toggleRowSelect('${key}',this.checked)" style="cursor:pointer;display:block;margin:0 auto 3px">
+    <span style="font-size:10px;color:var(--text3)">${ri+1}</span>
+  </td>`;
+
+  allCols().forEach(c=>{
+    if(c.key==='area'){
+      cells+=`<td>
+        <div style="display:flex;align-items:flex-start;gap:4px">
+          <textarea class="ci" rows="1" placeholder="Describe dependency…" oninput="autoGrow(this);save_cell(${ei},${si},${ri},'area',this.value)" maxlength="500" style="min-height:60px;max-height:120px;overflow-y:auto">${xe(row.area)}</textarea>
+          <button class="btn-ghost" onclick="openDetail(${ei},${si},${ri})"
+            title="${cmtCount?cmtCount+' comment(s) — click to view & add. Syncs to Jira ↗':'Add comment — syncs to Jira ↗'}"
+            style="flex-shrink:0;color:${cmtCount?'var(--brand2)':'var(--text3)'};font-size:11px;padding:2px 5px;margin-top:1px;border:1px solid ${cmtCount?'var(--brand2)':'var(--border)'};border-radius:4px;background:${cmtCount?'var(--blue-bg)':'transparent'}">
+            ${cmtCount?`💬 ${cmtCount}`:'💬'}
+          </button>
+        </div>
+        <div style="margin-top:3px;text-align:left">
+          ${row.jiraKey
+            ? `<a href="${JIRA_BASE}${row.jiraKey}" target="_blank"
+                style="font-size:9px;font-weight:700;color:#0052CC;background:#DDEEFF;border:1px solid #b3d4ff;border-radius:3px;padding:1px 6px;text-decoration:none;white-space:nowrap"
+                onclick="event.stopPropagation()" title="View ${row.jiraKey} in Jira">
+                🔗 ${row.jiraKey}
+               </a>`
+            : `<span style="font-size:9px;color:var(--text3)">syncs to Jira</span>`
+          }
+          ${row.jiraPending ? `<span style="font-size:9px;color:#e6a817;margin-left:3px">⏳ queued</span>` : ''}
+        </div>
+      </td>`;
+    }else if(c.key==='itype'){
+      const it=getItemType(row.itype||'');
+      const itOpts=ITEM_TYPES.map(t=>`<option value="${t.val}" ${(row.itype||'')===(t.val)?'selected':''}>${t.icon?t.icon+' ':''} ${t.label}</option>`).join('');
+      cells+=`<td style="vertical-align:top;padding-top:8px;padding-bottom:8px"><div style="display:flex;align-items:flex-start"><select class="ss" style="font-size:11px;font-weight:700;padding:3px 5px;${it.bg?`background:${it.bg};color:${it.color};border-color:${it.color}44`:''}" onchange="save_itype(${ei},${si},${ri},this)">${itOpts}</select></div></td>`;
+    }else if(c.key==='owner'){
+      cells+=`<td><input class="ci" type="text" placeholder="Owner" value="${xe(row.owner)}" oninput="save_cell(${ei},${si},${ri},'owner',this.value)" maxlength="100"></td>`;
+    }else if(c.key==='priority'){
+      cells+=`<td><select class="psel" style="${row.priority?`background:${PCOLS[row.priority]};color:${PTXT[row.priority]};font-weight:700`:''}" onchange="save_priority(${ei},${si},${ri},this)">${po}</select></td>`;
+    }else if(c.key==='status'){
+      cells+=`<td><select class="ss sstat" style="${ss}" onchange="save_status(${ei},${si},${ri},this)">${so}</select></td>`;
+    }else if(c.key==='eta'){
+      cells+=`<td><input class="di${ov}" type="date" value="${row.eta||''}" onchange="save_eta(${ei},${si},${ri},this)"></td>`;
+    }else if(c.key==='blockers'){
+      cells+=`<td style="max-width:240px"><textarea class="ci" rows="3" placeholder="Add a quick update or note…" oninput="autoGrow(this);save_cell(${ei},${si},${ri},'blockers',this.value)" maxlength="500" style="min-height:60px;max-height:120px;overflow-y:auto">${xe(row.blockers)}</textarea></td>`;
+    }else{
+      cells+=`<td><input class="ci" type="text" placeholder="…" value="${xe(row[c.key]||'')}" oninput="save_cell(${ei},${si},${ri},'${c.key}',this.value)"></td>`;
+    }
+  });
+  cells+=`<td class="act-c"><div class="row-act">
+    <button class="btn-ghost" onclick="mvRow(${ei},${si},${ri},-1)" title="Move up">↑</button>
+    <button class="btn-ghost" onclick="mvRow(${ei},${si},${ri},1)" title="Move down">↓</button>
+    <button class="btn-ghost" onclick="pushRowToJira(${ei},${si},${ri})" title="Queue for Jira sync (then tell Claude to process)" style="color:#0052CC;font-size:11px;font-weight:700">J↑</button>
+    <button class="btn-ghost" onclick="delRow(${ei},${si},${ri})" title="Delete" style="color:#C00000">🗑</button>
+  </div></td>`;
+  tr.innerHTML=cells;
+  setTimeout(()=>tr.querySelectorAll('textarea').forEach(autoGrow),0);
+  return tr;
+}
+
+// ── GANTT VIEW ────────────────────────────────────────────────────────────────
+function renderGantt(){
+  const wrap=document.getElementById('gantt-inner');
+  const today=new Date();today.setHours(0,0,0,0);
+  const dayMs=86400000;
+
+  // Collect rows with ETAs
+  const groups=[];
+  epics.forEach(([jira,name],ei)=>{
+    const rows=[];
+    (sections[ei]||[]).forEach((sec,si)=>{
+      (sec.rows||[]).forEach((r,ri)=>{
+        if(r.eta) rows.push({ei,si,ri,r,sec,jira});
+      });
+    });
+    if(rows.length) groups.push({ei,jira,name,rows});
+  });
+
+  if(!groups.length){
+    wrap.innerHTML=`<div style="padding:60px;text-align:center;color:var(--text3);font-size:14px">
+      <div style="font-size:32px;margin-bottom:12px">📅</div>
+      <div style="font-weight:600;margin-bottom:6px">No ETAs set yet</div>
+      <div style="font-size:12px">Add ETA dates in Table view to see the Gantt chart.</div>
+    </div>`;
+    return;
+  }
+
+  // Date range — snap to week boundaries
+  const allEtas=groups.flatMap(g=>g.rows.map(x=>new Date(x.r.eta)));
+  let minD=new Date(Math.min(...allEtas));
+  let maxD=new Date(Math.max(...allEtas));
+  // Never start more than 8 weeks before today — avoids old/stale dates dominating
+  const eightWeeksAgo=new Date(today);eightWeeksAgo.setDate(eightWeeksAgo.getDate()-56);
+  if(minD<eightWeeksAgo) minD=new Date(eightWeeksAgo);
+  // Snap minD back to nearest Monday
+  const dow=minD.getDay();
+  minD.setDate(minD.getDate()-(dow===0?6:dow-1));
+  minD.setHours(0,0,0,0);
+  maxD.setDate(maxD.getDate()+21);
+  maxD.setHours(0,0,0,0);
+  // Ensure today is always visible
+  if(today<minD) minD=new Date(today);
+
+  const totalDays=Math.round((maxD-minD)/dayMs);
+  const DAY_W=36;
+  const LABEL_W=300;
+  const META_W=160;
+
+  // Build weeks array
+  const weeks=[];
+  let cur=new Date(minD);
+  while(cur<=maxD){
+    weeks.push(new Date(cur));
+    cur.setDate(cur.getDate()+7);
+  }
+
+  // Build months array
+  const months=[];
+  let md=new Date(minD);
+  while(md<=maxD){
+    const key=md.getFullYear()+'-'+md.getMonth();
+    if(!months.length||months[months.length-1].key!==key){
+      months.push({key,label:md.toLocaleString('default',{month:'long',year:'numeric'}),startOff:Math.round((md-minD)/dayMs),days:0});
+    }
+    months[months.length-1].days++;
+    md.setDate(md.getDate()+1);
+  }
+
+  const todayOff=Math.max(0,Math.round((today-minD)/dayMs));
+  const todayX=LABEL_W+META_W+todayOff*DAY_W;
+  const totalW=LABEL_W+META_W+totalDays*DAY_W;
+
+  let html=`
+  <div style="padding:14px 20px 8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--text)">📅 Gantt Timeline</div>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--text3);align-items:center">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:2px;background:#4a6fa5;display:inline-block"></span>In Progress</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:2px;background:#C0392B;display:inline-block"></span>Delayed/Overdue</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:2px;background:#4CAF50;display:inline-block"></span>Done</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:2px;height:14px;background:#f44;display:inline-block"></span>Today</span>
+    </div>
+  </div>
+  <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 240px);border:1px solid var(--border);border-radius:8px;margin:0 20px 20px;box-shadow:var(--shadow);position:relative">
+  <div style="min-width:${totalW}px;position:relative;background:var(--surface)">
+
+    <!-- Month header -->
+    <div style="display:flex;background:#1e2a45;color:#fff;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(255,255,255,.1)">
+      <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:8px 14px;font-size:12px;font-weight:700;border-right:1px solid rgba(255,255,255,.1);flex-shrink:0">Dependency</div>
+      <div style="width:${META_W}px;min-width:${META_W}px;padding:8px 14px;font-size:12px;font-weight:700;border-right:1px solid rgba(255,255,255,.15);flex-shrink:0">Owner · Status</div>
+      <div style="flex:1;display:flex;overflow:hidden">
+        ${months.map(m=>`<div style="width:${m.days*DAY_W}px;min-width:${m.days*DAY_W}px;padding:8px 0;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);overflow:hidden;white-space:nowrap;flex-shrink:0">${m.label}</div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Week header -->
+    <div style="display:flex;background:#2e3a5a;color:rgba(255,255,255,.75);position:sticky;top:37px;z-index:20;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">
+      <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;border-right:1px solid rgba(255,255,255,.1);flex-shrink:0;padding:4px 14px;display:flex;align-items:center;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.4px;text-transform:uppercase">Week of →</div>
+      <div style="width:${META_W}px;min-width:${META_W}px;border-right:1px solid rgba(255,255,255,.15);flex-shrink:0"></div>
+      <div style="flex:1;position:relative;height:26px;overflow:hidden">
+        ${weeks.map(w=>{
+          const off=Math.round((w-minD)/dayMs);
+          const isNow=Math.abs(w-today)<7*dayMs;
+          return`<div style="position:absolute;left:${off*DAY_W}px;width:${7*DAY_W}px;height:26px;display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,.08);${isNow?'color:#FFD700;font-weight:700':''}">
+            ${w.toLocaleString('default',{month:'short'})} ${w.getDate()}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Today line -->
+    ${todayOff>=0&&todayOff<=totalDays?`<div style="position:absolute;left:${todayX}px;top:0;bottom:0;width:2px;background:rgba(255,60,60,.65);z-index:5;pointer-events:none">
+      <div style="position:sticky;top:63px;background:#f44;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:0 3px 3px 0;white-space:nowrap;width:fit-content">TODAY</div>
+    </div>`:''}
+
+    <!-- Epic groups -->
+    ${groups.map(({ei,jira,name,rows})=>`
+      <div style="display:flex;background:var(--rail);border-bottom:1px solid var(--border);min-height:32px;align-items:center">
+        <div style="width:${LABEL_W+META_W}px;min-width:${LABEL_W+META_W}px;padding:6px 14px;font-size:11px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <a href="${JIRA_BASE}${jira}" target="_blank" style="color:var(--brand2);text-decoration:none;font-weight:700">${xe(jira)}</a>
+          <span style="color:var(--text2)">${xe(name.length>40?name.slice(0,40)+'…':name)}</span>
+        </div>
+        <div style="flex:1"></div>
+      </div>
+      ${rows.map(({ei,si,ri,r,sec},rowIdx)=>{
+        const eta=new Date(r.eta);eta.setHours(0,0,0,0);
+        const etaOff=Math.round((eta-minD)/dayMs);
+        const sc=SC[r.status]||['#e8eaef','#555'];
+        const ov=isOverdue(r.eta,r.status);
+        const isDone=r.status==='Done';
+        const barColor=isDone?'#4CAF50':ov||r.status==='Delayed'?'#C0392B':r.status==='Blocked'?'#e74c3c':r.status==='At Risk'?'#E67E22':r.status==='In Progress'?'#4a6fa5':'#9aa0b8';
+        const barW=Math.max(5,Math.min(10*DAY_W, totalDays*DAY_W));
+        const minBarW=100;
+        const actualBarW=Math.max(minBarW, 7*DAY_W);
+        const barX=Math.max(0, etaOff*DAY_W - actualBarW + DAY_W);
+        const alt=rowIdx%2===1;
+        return`<div style="display:flex;border-bottom:1px solid var(--border2);background:${alt?'var(--bg)':'var(--surface)'};min-height:44px;align-items:stretch"
+          onmouseover="this.style.background='#EBF2FF'" onmouseout="this.style.background='${alt?'var(--bg)':'var(--surface)'}'">
+          <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:8px 10px 8px 16px;border-right:1px solid var(--border2);display:flex;flex-direction:column;justify-content:center;flex-shrink:0">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:2px">${xe(sec.emoji)} ${xe(sec.name)}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${xe(r.area)||'(no description)'}</div>
+          </div>
+          <div style="width:${META_W}px;min-width:${META_W}px;padding:8px 10px;border-right:1px solid var(--border2);display:flex;flex-direction:column;justify-content:center;gap:4px;flex-shrink:0">
+            ${r.owner?`<div style="font-size:11px;color:var(--text2)">👤 ${xe(r.owner)}</div>`:''}
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+              <span style="background:${sc[0]};color:${sc[1]};font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;white-space:nowrap">${r.status||'No status'}</span>
+              ${r.priority?`<span class="pill-p${r.priority.slice(1)}">${xe(r.priority)}</span>`:''}
+            </div>
+          </div>
+          <!-- Timeline area -->
+          <div style="flex:1;position:relative;overflow:hidden;min-height:44px">
+            <!-- Week grid lines -->
+            ${weeks.map(w=>{
+              const off=Math.round((w-minD)/dayMs);
+              return`<div style="position:absolute;left:${off*DAY_W}px;top:0;bottom:0;width:1px;background:var(--border2);opacity:.5"></div>`;
+            }).join('')}
+            <!-- ETA bar -->
+            <div style="position:absolute;top:50%;transform:translateY(-50%);left:${barX}px;width:${actualBarW}px;height:22px;background:${barColor};border-radius:5px;display:flex;align-items:center;padding:0 10px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:.15s;z-index:2"
+              title="${xe(r.area)} — ETA: ${fmtDate(r.eta)}"
+              onclick="openDetail(${ei},${si},${ri})"
+              onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-50%) scaleY(1.08)'"
+              onmouseout="this.style.filter='';this.style.transform='translateY(-50%)'">
+              <span style="color:#fff;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isDone?'✅ ':ov?'⚠️ ':''}${fmtDate(r.eta)}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    `).join('')}
+
+  </div>
+  </div>`;
+
+  wrap.innerHTML=html;
+}
+
+async function refreshSingleEpic(jiraKey){
+  // Find and update the clicked button
+  const btn = document.querySelector(`[data-key="${jiraKey}"]`);
+  if(btn){ btn.textContent='⏳'; btn.disabled=true; }
+  await loadJiraEpicStatus(true);
+  if(btn){ btn.textContent='↻ Refresh'; btn.disabled=false; }
+}
+
+
+// ── CARDS VIEW ────────────────────────────────────────────────────────────────
+function renderCards(){
+  const wrap=document.getElementById('cards-inner');
+  const groups={};
+  STATUSES.filter(s=>s).forEach(s=>{groups[s]=[];});
+  groups['No Status']=[];
+  sections.forEach((secs,ei)=>(secs||[]).forEach((sec,si)=>(sec.rows||[]).forEach((r,ri)=>{
+    const g=r.status||'No Status';
+    if(!groups[g])groups[g]=[];
+    groups[g].push({ei,si,ri,r,sec,jira:epics[ei][0]});
+  })));
+  const order=['Blocked','Delayed','At Risk','In Progress','Pending','No Status','Done'];
+  wrap.innerHTML=`<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;align-items:flex-start">
+    ${order.map(status=>{
+      const items=groups[status]||[];
+      const sc=SC[status]||['#f0f0f0','#555'];
+      return`<div style="min-width:240px;max-width:260px;flex-shrink:0">
+        <div style="background:${sc[0]};color:${sc[1]};font-size:12px;font-weight:700;padding:8px 12px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center">
+          <span>${status}</span><span style="background:rgba(0,0,0,.1);padding:1px 7px;border-radius:10px">${items.length}</span>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;min-height:60px;display:flex;flex-direction:column;gap:6px;padding:8px">
+          ${items.map(({ei,si,ri,r,sec,jira})=>`
+            <div onclick="openDetail(${ei},${si},${ri})" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;cursor:pointer;box-shadow:var(--shadow)" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.12)'" onmouseout="this.style.boxShadow='var(--shadow)'">
+              <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${xe(jira)} · ${xe(sec.emoji)} ${xe(sec.name)}</div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:6px">${xe(r.area.length>80?r.area.slice(0,80)+'…':r.area)||'(empty)'}</div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+                ${r.owner?`<span style="font-size:10px;color:var(--text2)">👤 ${xe(r.owner)}</span>`:''}
+                ${r.priority?`<span class="pill-p${r.priority.slice(1)}">${xe(r.priority)}</span>`:''}
+                ${r.eta?`<span style="font-size:10px;color:${isPastDue(r.eta)&&r.status!=='Done'?'#C00000':'var(--text3)'}">📅 ${fmtDate(r.eta)}</span>`:''}
+              </div>
+            </div>`).join('')}
+          ${items.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">No items</div>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── ROW DETAIL PANEL ──────────────────────────────────────────────────────────
+function openDetail(ei,si,ri){
+  _detailKey=rowKey(ei,si,ri);
+  const r=sections[ei][si].rows[ri];
+  const sec=sections[ei][si];
+  const cmts=comments[_detailKey]||[];
+  const sc=SC[r.status]||['#f5f5f5','#555'];
+  const me=getUsername()||'Anonymous';
+  document.getElementById('dp-title').textContent=`${sec.emoji} ${sec.name} · Row ${ri+1}`;
+  refreshUsernameBar();
+
+  function renderCmt(c,cIdx,threadParent){
+    const isMe=c.author===me;
+    const isAdmin=isAdminUser(me)&&!isMe;
+    const isAuto=!!c.isAutoUpdate;
+    const cid=`cmt-bubble-${ei}-${si}-${ri}-${cIdx}${threadParent!==undefined?'-t'+threadParent:''}`;
+    const replies=(c.replies||[]).map((rc,rIdx)=>renderCmt(rc,rIdx,cIdx)).join('');
+    const bubbleBg=isAuto?'var(--bg)':'var(--surface)';
+    const borderLeft=isAuto?'3px solid var(--border)':'3px solid transparent';
+    const typeLabel=isAuto?'<span style="font-size:9px;background:var(--border2);color:var(--text3);padding:1px 5px;border-radius:4px;margin-left:4px">auto-update</span>':'<span style="font-size:9px;background:#e8f0ff;color:var(--brand2);padding:1px 5px;border-radius:4px;margin-left:4px">comment</span>';
+    const syncBtn=c.jiraSynced===true
+      ?'<span style="font-size:10px;color:#4a7c40">✅ Synced to Jira</span>'
+      :c.jiraSynced==='pending'
+      ?'<span style="font-size:10px;color:#4a6fa5">⏳ Queued for Jira sync</span>'
+      :'<button onmousedown="syncCommentToJira('+ei+','+si+','+ri+','+cIdx+','+(threadParent!==undefined?threadParent:'undefined')+',this)" style="background:none;border:1px solid #0052CC;border-radius:4px;color:#0052CC;font-size:10px;padding:1px 7px;cursor:pointer;font-family:inherit">↗ Sync to Jira</button>';
+    const tp=threadParent!==undefined?threadParent:'undefined';
+    const editBtn=isMe?'<button onmousedown="editComment('+ei+','+si+','+ri+','+cIdx+','+tp+')">✏️ Edit</button>':'';
+    const delBtn=isMe?'<button onmousedown="deleteComment('+ei+','+si+','+ri+','+cIdx+','+tp+')" style="color:#C00000">🗑 Delete</button>'
+      :isAdmin?'<button onmousedown="deleteComment('+ei+','+si+','+ri+','+cIdx+','+tp+',true)" style="color:#C00000" title="Admin override — deletes another user\'s comment">🛡️🗑 Delete (admin)</button>':'';
+    const replyBtn='<button onmousedown="replyToComment('+ei+','+si+','+ri+','+(threadParent!==undefined?threadParent:cIdx)+')">↩ Reply</button>';
+    const threadHtml=replies?'<div class="comment-thread">'+replies+'</div>':'';
+    const avatarTxt=isAuto?'📝':(c.author||'?').slice(0,2).toUpperCase();
+    const avatarBg=isMe?'var(--brand2)':isAuto?'#888':'var(--brand3)';
+    const authorColor=isMe?'var(--brand2)':'var(--text2)';
+    const editedTxt=c.edited?' <em style="font-size:10px;color:var(--text3)">(edited)</em>':'';
+    return '<div class="comment-item">'
+      +'<div class="comment-avatar" style="background:'+avatarBg+';font-size:10px">'+avatarTxt+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="comment-bubble" id="'+cid+'" style="background:'+bubbleBg+';border-left:'+borderLeft+';padding-left:8px">'
+      +'<div class="comment-meta">'
+      +'<span style="font-weight:700;color:'+authorColor+'">'+xe(c.author||'Anonymous')+'</span>'
+      +typeLabel
+      +'<span style="color:var(--text3);margin-left:4px">'+xe(c.ts||'')+editedTxt+'</span>'
+      +'</div>'
+      +'<div class="comment-text">'+formatCommentText(c.text||'')+'</div>'
+      +'</div>'
+      +'<div class="comment-actions">'+syncBtn+replyBtn+editBtn+delBtn+'</div>'
+      +threadHtml
+      +'</div></div>';
+  }
+
+  document.getElementById('dp-body').innerHTML=`
+    <div class="dp-field"><label>Area / Item</label><div class="dp-field-val">${xe(r.area)||'<span style="color:var(--text3)">Not set</span>'}</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="dp-field"><label>Owner</label><div class="dp-field-val">${xe(r.owner)||'—'}</div></div>
+      <div class="dp-field"><label>Priority</label><div class="dp-field-val">${r.priority?`<span class="pill-p${r.priority.slice(1)}">${xe(r.priority)}</span>`:'—'}</div></div>
+      <div class="dp-field"><label>Status</label><div class="dp-field-val"><span style="background:${sc[0]};color:${sc[1]};padding:2px 10px;border-radius:10px;font-size:12px;font-weight:700">${r.status||'Not set'}</span></div></div>
+      <div class="dp-field"><label>ETA</label><div class="dp-field-val${isOverdue(r.eta,r.status)?' ov':''}">${r.eta?fmtDate(r.eta):'—'}${isOverdue(r.eta,r.status)?' ⚠️ Overdue':''}</div></div>
+    </div>
+    ${r.blockers?`<div class="dp-field"><label>Latest Updates/Notes</label><div class="dp-field-val">${xe(r.blockers)}</div></div>`:''}
+    <div class="dp-section">💬 Comments (${cmts.length}) — <span style="font-weight:400;font-size:10px;color:var(--brand2)">posts to Jira Dependency ticket</span></div>
+    <div class="comments-list" id="dp-comments">
+      ${cmts.length?cmts.map((c,i)=>renderCmt(c,i,undefined)).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No comments yet. Be the first!</div>'}
+    </div>
+    `;
+  // Wire up footer comment input
+  const footerInput = document.getElementById('dp-comment-input-footer');
+  const sendBtn = document.getElementById('dp-send-btn');
+  if(footerInput){
+    footerInput.value='';
+    footerInput.oninput = ()=>handleMentionInput(footerInput);
+    footerInput.onkeydown = (e)=>{
+      const dd=document.getElementById('mention-dropdown');
+      if(dd&&dd.classList.contains('open')){
+        if(e.key==='Escape'){dd.classList.remove('open');return;}
+      }
+      if(e.key==='Escape'&&footerInput.dataset.replyTo){cancelReply();return;}
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitComment(ei,si,ri);}
+    };
+    sendBtn.onclick = ()=>submitComment(ei,si,ri);
+    setTimeout(()=>footerInput.focus(),300);
+  }
+  initUsername();
+  document.getElementById('detail-overlay').classList.add('open');
+  document.getElementById('detail-panel').classList.add('open');
+
+}
+function closeDetail(){
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.getElementById('detail-panel').classList.remove('open');
+  _detailKey=null;
+}
+function submitComment(ei,si,ri){
+  const inp=document.getElementById('dp-comment-input-footer');
+  const text=(inp?.value||'').trim();
+  if(!text)return;
+  const key=rowKey(ei,si,ri);
+  if(!comments[key])comments[key]=[];
+  const author=getUsername()||'Anonymous';
+  const replyTo=inp.dataset.replyTo;
+  const newCmt={author,text,ts:nowStr(),replies:[]};
+
+  if(replyTo!==undefined && replyTo!==''){
+    const parentIdx=parseInt(replyTo);
+    if(!comments[key][parentIdx].replies) comments[key][parentIdx].replies=[];
+    comments[key][parentIdx].replies.push({author,text,ts:nowStr()});
+  } else {
+    comments[key].push(newCmt);
+  }
+
+  logAudit(`[${key}] ${author} commented: "${text.slice(0,50)}"`);
+  saveToFirebase();
+
+  // Post to Jira (top-level comments only)
+  if(!replyTo){
+    const jiraKey=sections[ei][si].rows[ri]?.jiraKey;
+    if(jiraKey) postCommentToJira(jiraKey,author,text).catch(e=>console.warn('Jira comment failed:',e));
+  }
+
+  // Reset input
+  inp.value='';
+  cancelReply();
+  closeEmojiPicker();
+  openDetail(ei,si,ri);
+}
+
+// ── CELL UPDATES ──────────────────────────────────────────────────────────────
+function save_cell(ei,si,ri,field,val){
+  const old=sections[ei][si].rows[ri][field];
+  sections[ei][si].rows[ri][field]=val;
+  sections[ei][si].rows[ri]._ts=Date.now();
+  // Auto-post to comments when Latest Update field changes
+  if(field==='blockers' && val.trim() && val.trim()!==old.trim()){
+    scheduleBlokerComment(ei,si,ri,val.trim());
+  }
+  if(old!==val){logAudit(`[${rowKey(ei,si,ri)}] "${field}" changed`);scheduleJiraUpdate(ei,si,ri);}
+  saveToFirebase();
+}
+function save_itype(ei,si,ri,sel){
+  const val=sel.value;
+  sections[ei][si].rows[ri].itype=val;
+  sections[ei][si].rows[ri]._ts=Date.now();
+  const it=getItemType(val);
+  if(it.bg){sel.style.background=it.bg;sel.style.color=it.color;sel.style.borderColor=it.color+'44';}
+  else{sel.style.background='';sel.style.color='';sel.style.borderColor='';}
+  logAudit(`[${rowKey(ei,si,ri)}] Type set to "${it.label}"`);
+  updateDashboard();saveToFirebase();
+}
+function save_priority(ei,si,ri,sel){
+  const p=sel.value;
+  sections[ei][si].rows[ri].priority=p;
+  sections[ei][si].rows[ri]._ts=Date.now();
+  if(p){sel.style.background=PCOLS[p];sel.style.color=PTXT[p];sel.style.fontWeight='700';}
+  else{sel.style.background='';sel.style.color='';sel.style.fontWeight='';}
+  logAudit(`[${rowKey(ei,si,ri)}] Priority set to "${p||'none'}"`);
+  updateDashboard();saveToFirebase();
+}
+function save_status(ei,si,ri,sel){
+  const s=sel.value;
+  sections[ei][si].rows[ri]._ts=Date.now();
+  const old=sections[ei][si].rows[ri].status;
+  sections[ei][si].rows[ri].status=s;
+  // Queue Jira status update if row is linked and status changed
+  if(sections[ei][si].rows[ri].jiraKey && old !== s){
+    queueJiraStatusUpdate(ei,si,ri,s);
+  }
+  if(SC[s]){sel.style.background=SC[s][0];sel.style.color=SC[s][1];sel.style.borderColor=SC[s][1]+'44';}
+  else{sel.style.background='';sel.style.color='';sel.style.borderColor='';}
+  const row=sel.closest('tr');
+  if(row){const dt=row.querySelector('.di');if(dt)dt.className='di'+(isOverdue(sections[ei][si].rows[ri].eta,s)?' ov':'');}
+  if(old!==s)logAudit(`[${rowKey(ei,si,ri)}] Status: "${old||'none'}" → "${s||'none'}"`);
+  updateDashboard();saveToFirebase();
+}
+function save_eta(ei,si,ri,input){
+  sections[ei][si].rows[ri].eta=input.value;
+  sections[ei][si].rows[ri]._ts=Date.now();
+  const s=sections[ei][si].rows[ri].status;
+  const sel=input.closest('tr')?.querySelector('.sstat');
+  if(input.value&&!isPastDue(input.value)){
+    if(s==='Delayed'){
+      sections[ei][si].rows[ri].status='In Progress';
+      if(sel){sel.value='In Progress';sel.style.background=SC['In Progress'][0];sel.style.color=SC['In Progress'][1];sel.style.borderColor=SC['In Progress'][1]+'44';}
+    }
+    input.className='di';
+  }else if(isOverdue(input.value,s)&&s!=='Delayed'&&s!=='Done'){
+    sections[ei][si].rows[ri].status='Delayed';
+    if(sel){sel.value='Delayed';sel.style.background=SC['Delayed'][0];sel.style.color=SC['Delayed'][1];}
+    input.className='di ov';
+  }else{
+    input.className='di'+(isPastDue(input.value)&&sections[ei][si].rows[ri].status!=='Done'?' ov':'');
+  }
+  logAudit(`[${rowKey(ei,si,ri)}] ETA set to "${input.value}"`);
+  scheduleJiraUpdate(ei,si,ri);
+  updateDashboard();saveToFirebase();
+}
+
+// ── STRUCTURAL CHANGES ────────────────────────────────────────────────────────
+function structuralChange(fn){
+  const scrollY=window.scrollY;
+  const epicVal=document.getElementById('flt-epic').value;
+  const statusVal=document.getElementById('flt-status').value;
+  fn();
+  renderAll();
+  requestAnimationFrame(()=>{
+    document.getElementById('flt-epic').value=epicVal;
+    document.getElementById('flt-status').value=statusVal;
+    if(epicVal!=='all')filterByEpic(epicVal);
+    if(statusVal!=='all')filterByStatus(statusVal);
+    window.scrollTo(0,scrollY);
+  });
+  saveToFirebase();
+}
+function addRow(ei,si){structuralChange(()=>sections[ei][si].rows.push(initRow()));}
+function delRow(ei,si,ri){if(sections[ei][si].rows.length<=1&&!confirm('Delete last row?'))return;logAudit(`[${rowKey(ei,si,ri)}] Row deleted`);structuralChange(()=>sections[ei][si].rows.splice(ri,1));}
+function mvRow(ei,si,ri,d){const rows=sections[ei][si].rows;const ni=ri+d;if(ni<0||ni>=rows.length)return;structuralChange(()=>{[rows[ri],rows[ni]]=[rows[ni],rows[ri]];});}
+function delSec(ei,si){if(!confirm(`Delete "${sections[ei][si].name}"?`))return;logAudit(`Section "${sections[ei][si].name}" deleted`);structuralChange(()=>sections[ei].splice(si,1));}
+function delEpic(ei){if(!confirm(`Delete "${epics[ei][1]}"?`))return;logAudit(`Epic "${epics[ei][1]}" deleted`);structuralChange(()=>{epics.splice(ei,1);sections.splice(ei,1);});}
+
+// ── RENAME SECTION ────────────────────────────────────────────────────────────
+function openRenameSecModal(ei,si){
+  _renameSecFor={ei,si};
+  document.getElementById('rs-emoji').value=sections[ei][si].emoji;
+  document.getElementById('rs-name').value=sections[ei][si].name;
+  openModal('rename-sec-modal');
+  setTimeout(()=>document.getElementById('rs-name').select(),80);
+}
+function confirmRenameSec(){
+  const emoji=document.getElementById('rs-emoji').value.trim()||(_renameSecFor&&sections[_renameSecFor.ei][_renameSecFor.si].emoji);
+  const name=document.getElementById('rs-name').value.trim();
+  if(!name){alert('Enter a section name.');return;}
+  closeModal('rename-sec-modal');
+  logAudit(`Section renamed to "${emoji} ${name}"`);
+  structuralChange(()=>{sections[_renameSecFor.ei][_renameSecFor.si].emoji=emoji;sections[_renameSecFor.ei][_renameSecFor.si].name=name;});
+}
+
+// ── COLUMNS ───────────────────────────────────────────────────────────────────
+function confirmAddCol(){
+  const label=document.getElementById('nc-name').value.trim();
+  const width=parseInt(document.getElementById('nc-width').value)||120;
+  if(!label){alert('Enter a column name.');return;}
+  const key='custom_'+label.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now();
+  closeModal('add-col-modal');
+  extraCols.push({key,label,width,core:false});
+  logAudit(`Custom column "${label}" added`);
+  structuralChange(()=>{sections.forEach(eSecs=>eSecs.forEach(sec=>sec.rows.forEach(row=>{row[key]='';}))); });
+}
+function delCol(ci){
+  const col=allCols()[ci];if(col.core)return;
+  if(!confirm(`Remove column "${col.label}"? Data will be lost.`))return;
+  extraCols=extraCols.filter(c=>c.key!==col.key);
+  logAudit(`Column "${col.label}" removed`);
+  structuralChange(()=>{});
+}
+function colDragStart(e,ci){_dragCol=ci;e.dataTransfer.effectAllowed='move';e.currentTarget.style.opacity='.5';}
+function colDragEnd(e){e.currentTarget.style.opacity='1';_dragCol=null;}
+function colDragOver(e){e.preventDefault();e.currentTarget.classList.add('col-drag-over');}
+function colDragLeave(e){e.currentTarget.classList.remove('col-drag-over');}
+function colDrop(e,toCi){
+  e.preventDefault();e.currentTarget.classList.remove('col-drag-over');
+  if(_dragCol===null||_dragCol===toCi)return;
+  const cols=allCols();const fromCol=cols[_dragCol];
+  const newOrder=[...cols];newOrder.splice(_dragCol,1);newOrder.splice(_dragCol<toCi?toCi-1:toCi,0,fromCol);
+  const coreKeys=newOrder.filter(c=>c.core).map(c=>c.key);
+  CORE_COLS.sort((a,b)=>coreKeys.indexOf(a.key)-coreKeys.indexOf(b.key));
+  extraCols=newOrder.filter(c=>!c.core);
+  structuralChange(()=>{});
+}
+
+// ── BULK SELECTION ────────────────────────────────────────────────────────────
+function toggleRowSelect(key,checked){
+  if(checked)selectedRows.add(key);else selectedRows.delete(key);
+  updateBulkBar();
+  const tr=document.querySelector(`tr[data-key="${key}"]`);
+  if(tr)tr.classList.toggle('selected',checked);
+}
+function selectSection(ei,si,checked){
+  (sections[ei][si].rows||[]).forEach((_,ri)=>{
+    const key=rowKey(ei,si,ri);
+    if(checked)selectedRows.add(key);else selectedRows.delete(key);
+  });
+  renderAll();updateBulkBar();
+}
+function toggleSectionCheckbox(ei,si){
+  const allKeys=(sections[ei][si].rows||[]).map((_,ri)=>rowKey(ei,si,ri));
+  const allSelected=allKeys.length>0&&allKeys.every(k=>selectedRows.has(k));
+  selectSection(ei,si,!allSelected);
+}
+function clearSelection(){selectedRows.clear();updateBulkBar();renderAll();}
+function updateBulkBar(){
+  const bar=document.getElementById('bulk-bar');
+  const n=selectedRows.size;
+  if(n>0){bar.classList.add('open');document.getElementById('bulk-count').textContent=`${n} row${n>1?'s':''} selected`;}
+  else bar.classList.remove('open');
+}
+function bulkSetStatus(){
+  const s=document.getElementById('bulk-status-sel').value;
+  if(!s)return;
+  selectedRows.forEach(key=>{
+    const[ei,si,ri]=key.split('-').map(Number);
+    if(sections[ei]?.[si]?.rows?.[ri])sections[ei][si].rows[ri].status=s;
+    logAudit(`[${key}] Bulk status set to "${s}"`);
+  });
+  clearSelection();structuralChange(()=>{});
+}
+function bulkDelete(){
+  if(!confirm(`Delete ${selectedRows.size} row(s)?`))return;
+  const toDelete=[...selectedRows].map(k=>k.split('-').map(Number)).sort((a,b)=>b[2]-a[2]);
+  toDelete.forEach(([ei,si,ri])=>{if(sections[ei]?.[si]?.rows?.[ri])sections[ei][si].rows.splice(ri,1);});
+  clearSelection();structuralChange(()=>{});
+}
+
+// ── SECTION / EPIC MODALS ─────────────────────────────────────────────────────
+function openAddSecModal(ei){_addSecFor=ei;document.getElementById('ns-name').value='';document.getElementById('ns-emoji').value='📌';document.getElementById('ns-rows').value='2';openModal('add-sec-modal');}
+function confirmAddSec(){
+  const emoji=document.getElementById('ns-emoji').value.trim()||'📌';
+  const name=document.getElementById('ns-name').value.trim();
+  const n=parseInt(document.getElementById('ns-rows').value)||2;
+  if(!name){alert('Enter a section name.');return;}
+  closeModal('add-sec-modal');
+  logAudit(`Section "${emoji} ${name}" added`);
+  structuralChange(()=>sections[_addSecFor].push({emoji,name,rows:Array.from({length:n},()=>initRow())}));
+}
+function confirmAddEpic(){
+  const jira=document.getElementById('ne-jira').value.trim();
+  const name=document.getElementById('ne-name').value.trim();
+  const assignee=document.getElementById('ne-assignee').value.trim();
+  if(!jira||!name){alert('Fill in Jira ID and Epic Name.');return;}
+  closeModal('add-epic-modal');
+  logAudit(`Epic "${jira} ${name}" added`);
+  structuralChange(()=>{epics.push([jira,name,assignee]);sections.push(DEF_SECS.map(s=>({emoji:s.emoji,name:s.name,rows:Array.from({length:2},()=>initRow())})));});
+}
+
+// ── VIEW SWITCHING ────────────────────────────────────────────────────────────
+function switchView(view,btn){
+  _currentView=view;
+  document.querySelectorAll('.view-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.view-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  btn.classList.add('active');
+  if(view==='gantt')renderGantt();
+  if(view==='cards')renderCards();
+}
+
+// ── DARK MODE ─────────────────────────────────────────────────────────────────
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  const dark=document.body.classList.contains('dark');
+  document.getElementById('dark-btn').textContent=dark?'☀️':'🌙';
+  localStorage.setItem('bts_dark',dark?'1':'0');
+}
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+function doSearch(q){
+  const term=q.toLowerCase().trim();
+  document.querySelectorAll('.drow').forEach(tr=>{
+    if(!term){tr.classList.remove('hidden');return;}
+    tr.classList.toggle('hidden',!tr.innerText.toLowerCase().includes(term));
+  });
+  updateRowCount();
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+function updateEpicDropdown(){
+  const sel=document.getElementById('flt-epic');const cur=sel.value;
+  sel.innerHTML='<option value="all">All Epics</option>'+epics.map(([j,n],i)=>`<option value="${i}">${j} | ${n}</option>`).join('');
+  if([...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
+function filterByEpic(val){document.querySelectorAll('.epic-block').forEach(b=>b.classList.toggle('hidden',val!=='all'&&b.dataset.ei!==val));updateRowCount();}
+function filterByStatus(val){document.querySelectorAll('.drow').forEach(r=>{if(val==='all'){r.classList.remove('hidden');return;}const sel=r.querySelector('.sstat');r.classList.toggle('hidden',!sel||sel.value!==val);});updateRowCount();}
+function filterByPriority(val){document.querySelectorAll('.drow').forEach(r=>{if(val==='all'){r.classList.remove('hidden');return;}const sel=r.querySelector('.psel');r.classList.toggle('hidden',!sel||sel.value!==val);});updateRowCount();}
+function filterByType(val){
+  document.querySelectorAll('.drow').forEach(r=>{
+    if(val==='all'){r.classList.remove('hidden');return;}
+    const sels=r.querySelectorAll('select');
+    let match=false;
+    sels.forEach(s=>{if(ITEM_TYPES.some(t=>t.val===s.value)&&s.value===val)match=true;});
+    r.classList.toggle('hidden',!match);
+  });
+  updateRowCount();
+}
+function quickFilter(val){
+  document.getElementById('flt-status').value=val==='overdue'?'all':val;
+  if(val==='overdue'){
+    document.querySelectorAll('.drow').forEach(tr=>{
+      const dt=tr.querySelector('.di');const ss=tr.querySelector('.sstat');
+      tr.classList.toggle('hidden',!(dt&&isPastDue(dt.value)&&ss&&ss.value!=='Done'));
+    });
+  }else filterByStatus(val);
+  updateRowCount();
+}
+function clearFilters(){
+  document.getElementById('flt-epic').value='all';
+  document.getElementById('flt-status').value='all';
+  document.getElementById('flt-priority').value='all';
+  const ftEl=document.getElementById('flt-type');if(ftEl)ftEl.value='all';
+  const sb=document.getElementById('search-box');if(sb)sb.value='';
+  ['flt-status','flt-type','flt-priority'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.color='';el.style.fontWeight='';}});
+  ['status-filter-wrap','type-filter-wrap','priority-filter-wrap'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.background='';el.style.borderColor='var(--brand2)';el.style.color='';}});
+  document.querySelectorAll('.epic-block,.drow').forEach(r=>r.classList.remove('hidden'));
+  updateRowCount();
+}
+function updateRowCount(){
+  const v=document.querySelectorAll('.drow:not(.hidden)').length;
+  const t=document.querySelectorAll('.drow').length;
+  const el=document.getElementById('row-count');
+  if(el)el.textContent=`${v} of ${t} items`;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function updateDashboard(){
+  let tot=0,done=0,ip=0,blk=0,ov=0,pend=0;
+  sections.forEach(secs=>(secs||[]).forEach(sec=>(sec.rows||[]).forEach(r=>{
+    if(!r.area&&!r.status)return; // skip empty rows
+    tot++;if(r.status==='Done')done++;if(r.status==='In Progress')ip++;
+    if(r.status==='Blocked')blk++;if(isOverdue(r.eta,r.status))ov++;if(r.status==='Pending')pend++;
+  })));
+  document.getElementById('s-total').textContent=tot;
+  document.getElementById('s-done').textContent=done;
+  document.getElementById('s-inprog').textContent=ip;
+  document.getElementById('s-blk').textContent=blk;
+  document.getElementById('s-ov').textContent=ov;
+  document.getElementById('s-pend').textContent=pend;
+  updateEpicCards();
+}
+function updateEpicCards(){
+  const panel=document.getElementById('epic-panel');if(!panel)return;
+  panel.innerHTML=epics.map(([jira,name],ei)=>{
+    let d=0,ip=0,bl=0,ar=0,pd=0,dl=0,t=0;
+    const secStats=[];
+    (sections[ei]||[]).forEach(sec=>{
+      let sd=0,st=0;
+      (sec.rows||[]).forEach(r=>{
+        if(!r.area&&!r.status) return; // skip truly empty rows
+        t++;st++;if(r.status==='Done'){d++;sd++;}
+        else if(r.status==='In Progress')ip++;else if(r.status==='Blocked')bl++;
+        else if(r.status==='At Risk')ar++;else if(r.status==='Pending')pd++;else if(r.status==='Delayed')dl++;
+      });
+      secStats.push({name:sec.name,emoji:sec.emoji,done:sd,total:st});
+    });
+    const pct=t?Math.round(d/t*100):0;
+    const icon=bl>0?'🔴':ar>0?'🟠':dl>0?'🟠':pct===100?'✅':'🔵';
+    const accentColor=bl>0?'#C0392B':ar>0?'#E67E22':dl>0?'#E67E22':pct===100?'#4CAF50':'#4a6fa5';
+    return`<div class="ecard" style="border-left-color:${accentColor}">
+      <div class="ecard-jira"><a href="${JIRA_BASE}${jira}" target="_blank" style="color:var(--brand2);font-weight:700;font-size:11px;text-decoration:none">${icon} ${jira}</a></div>
+      <div class="ecard-title">${xe(name)}</div>
+      ${epics[ei][2]?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px">👤 ${xe(epics[ei][2])}</div>`:''}
+      <div class="ecard-prog"><div class="ecard-pfill" style="width:${pct}%"></div></div>
+      <div class="ecard-stats" style="margin-bottom:8px">
+        <span class="spill2" style="background:var(--green-bg);color:var(--green-text)">${d} Done</span>
+        ${ip?`<span class="spill2" style="background:var(--blue-bg);color:var(--blue-text)">${ip} In Prog</span>`:''}
+        ${bl?`<span class="spill2" style="background:var(--red-bg);color:var(--red)">${bl} Blocked</span>`:''}
+        ${dl?`<span class="spill2" style="background:#FFE0E0;color:#C0392B">${dl} Delayed</span>`:''}
+        ${pd?`<span class="spill2" style="background:var(--yellow-bg);color:var(--yellow-text)">${pd} Pending</span>`:''}
+        <span class="spill2" style="background:var(--border2);color:var(--text3)">${pct}% done</span>
+      </div>
+      ${secStats.map(s=>{const sp=s.total?Math.round(s.done/s.total*100):0;return`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-top:1px solid var(--border2)"><span style="font-size:11px;color:var(--text3);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.emoji} ${s.name}</span><div style="width:50px;height:3px;background:var(--border);border-radius:2px;flex-shrink:0"><div style="width:${sp}%;height:100%;background:${sp===100?'#4CAF50':'#4a6fa5'};border-radius:2px"></div></div><span style="font-size:10px;color:var(--text3);width:26px;text-align:right">${sp}%</span></div>`;}).join('')}
+    </div>`;
+  }).join('');
+}
+function toggleEpicPanel(btn){const panel=document.getElementById('epic-panel');const open=panel.classList.toggle('open');btn.textContent=(open?'▼':'▶')+' Dependency Summary';if(open)updateEpicCards();}
+
+// ── OVERDUE TOAST ─────────────────────────────────────────────────────────────
+function showOverdueToast(){
+  const items=[];
+  sections.forEach((secs,ei)=>(secs||[]).forEach((sec,si)=>(sec.rows||[]).forEach((r,ri)=>{
+    if(r.eta&&isOverdue(r.eta,r.status)){
+      const days=Math.round((new Date()-new Date(r.eta))/(86400000));
+      const itype=getItemType(r.itype||'');
+      items.push({ei,si,ri,jira:epics[ei][0],epicName:epics[ei][1],sec:sec.name,secEmoji:sec.emoji,
+        area:r.area||'(no description)',days,priority:r.priority,status:r.status,
+        owner:r.owner,eta:r.eta,itype,blockers:r.blockers});
+    }
+  })));
+  if(!items.length)return;
+  items.sort((a,b)=>b.days-a.days);
+
+  const critical=items.filter(i=>i.priority==='P0').length;
+  const high=items.filter(i=>i.priority==='P1').length;
+
+  document.getElementById('toast-count').innerHTML=`<span style="font-size:13px;font-weight:700;color:#C00000">${items.length} item${items.length>1?'s':''} overdue</span>
+    ${critical?`<span style="margin-left:8px;background:#fde8e8;color:#c00;font-size:11px;font-weight:700;padding:1px 8px;border-radius:10px">P0: ${critical}</span>`:''}
+    ${high?`<span style="margin-left:4px;background:#fff0d4;color:#a05000;font-size:11px;font-weight:700;padding:1px 8px;border-radius:10px">P1: ${high}</span>`:''}`;
+
+  document.getElementById('toast-body').innerHTML=items.map((it,idx)=>{
+    const sc=SC[it.status]||['#f5f5f5','#555'];
+    const urgency=it.days>=14?'#C00000':it.days>=7?'#E67E22':'#7F6000';
+    const urgencyBg=it.days>=14?'#FFE0E0':it.days>=7?'#FFF0D4':'#FFF2CC';
+    return`<div class="toast-item" onclick="openDetail(${it.ei},${it.si},${it.ri})" title="Click to view details" style="border-left:5px solid ${urgency};margin-bottom:8px">
+      <div style="padding:10px 14px 10px">
+        <!-- Row 1: title + days badge -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:7px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.4;flex:1">
+            ${it.priority?`<span class="pill-p${it.priority.slice(1)}" style="margin-right:6px;vertical-align:middle">${it.priority}</span>`:''}${it.itype&&it.itype.icon?`<span style="margin-right:4px">${it.itype.icon}</span>`:''}${xe(it.area)}
+          </div>
+          <span style="flex-shrink:0;background:${urgencyBg};color:${urgency};font-size:11px;font-weight:800;padding:3px 10px;border-radius:10px;white-space:nowrap;border:1px solid ${urgency}33">${it.days}d overdue</span>
+        </div>
+        <!-- Row 2: meta pills -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <a href="${JIRA_BASE}${it.jira}" target="_blank" onclick="event.stopPropagation()" style="color:var(--brand2);font-weight:700;font-size:11px;text-decoration:none;background:var(--blue-bg);padding:1px 7px;border-radius:6px">${xe(it.jira)}</a>
+          <span style="font-size:11px;color:var(--text3)">·  ${xe(it.secEmoji)} ${xe(it.sec)}</span>
+          ${it.owner?`<span style="font-size:11px;color:var(--text2)">👤 ${xe(it.owner)}</span>`:''}
+          <span style="font-size:11px;background:${sc[0]};color:${sc[1]};padding:1px 8px;border-radius:8px;font-weight:600">${xe(it.status)}</span>
+          <span style="font-size:11px;color:var(--text3)">📅 ETA was ${fmtDate(it.eta)}</span>
+        </div>
+        ${it.blockers?`<div style="margin-top:7px;font-size:11px;color:var(--text3);background:var(--bg);padding:5px 10px;border-radius:5px;border-left:3px solid ${urgency}">🚧 ${xe(it.blockers.slice(0,120))}${it.blockers.length>120?'…':''}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('overdue-toast').classList.add('open');
+}
+function closeToast(autoDelay){
+  if(autoDelay){
+    sections.forEach((secs,ei)=>(secs||[]).forEach((sec,si)=>(sec.rows||[]).forEach((r,ri)=>{
+      if(r.eta&&isOverdue(r.eta,r.status)){sections[ei][si].rows[ri].status='Delayed';logAudit(`[${rowKey(ei,si,ri)}] Auto-set Delayed`);}
+    })));
+    renderAll();saveToFirebase();
+  }
+  document.getElementById('overdue-toast').classList.remove('open');
+}
+
+// ── CSV EXPORT ────────────────────────────────────────────────────────────────
+function exportCSV(){
+  const cols=allCols();
+  let csv=['Jira','Epic','Section','#','Type',...cols.map(c=>c.label),'Comments'].join(',')+'\n';
+  epics.forEach(([j,n],ei)=>(sections[ei]||[]).forEach(sec=>(sec.rows||[]).forEach((r,ri)=>{
+    const e=v=>`"${(v||'').replace(/"/g,'""')}"`;
+    const cmts='';
+    csv+=[j,n,sec.name,ri+1,r.itype||'',...cols.map(c=>r[c.key]||''),cmts].map(e).join(',')+'\n';
+  })));
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='BTS_Tracker.csv';a.click();
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// ── SHORTCUTS ─────────────────────────────────────────────────────────────────
+function openShortcuts(){document.getElementById('shortcuts-panel').classList.add('open');}
+function closeShortcuts(){document.getElementById('shortcuts-panel').classList.remove('open');}
+document.getElementById('shortcuts-panel').addEventListener('click',e=>{if(e.target===document.getElementById('shortcuts-panel'))closeShortcuts();});
+
+document.addEventListener('keydown',e=>{
+  const tag=document.activeElement.tagName.toLowerCase();
+  const typing=tag==='input'||tag==='textarea'||tag==='select';
+  if(e.key==='Escape'){closeDetail();closeShortcuts();document.querySelectorAll('.modal-bg.open').forEach(m=>m.classList.remove('open'));return;}
+  if(typing)return;
+  if(e.key==='/'){{e.preventDefault();document.getElementById('search-box').focus();}}
+  if(e.key==='d'||e.key==='D')toggleDark();
+  if(e.key==='?')openShortcuts();
+  if(e.key==='1')switchView('table',document.querySelectorAll('.view-tab')[0]);
+  if(e.key==='2')switchView('gantt',document.querySelectorAll('.view-tab')[1]);
+  if(e.key==='3')switchView('cards',document.querySelectorAll('.view-tab')[2]);
+  if((e.ctrlKey||e.metaKey)&&e.key==='a'){e.preventDefault();document.querySelectorAll('.drow:not(.hidden)').forEach(tr=>{selectedRows.add(tr.dataset.key);tr.classList.add('selected');});updateBulkBar();}
+});
+
+// ── STYLE FILTER SEL ──────────────────────────────────────────────────────────
+function styleFilterSel(sel, type){
+  const val=sel.value;
+  const wrapId={status:'status-filter-wrap',type:'type-filter-wrap',priority:'priority-filter-wrap'}[type];
+  const wrap=wrapId?document.getElementById(wrapId):null;
+  const label=sel.previousElementSibling;
+  if(val==='all'){
+    if(wrap){wrap.style.background='';wrap.style.borderColor='var(--brand2)';wrap.style.color='';}
+    sel.style.color='';sel.style.fontWeight='500';
+    if(label)label.style.color='var(--brand2)';
+    return;
+  }
+  const colors={
+    status:{'In Progress':['#DDEEFF','#1F497D'],'Pending':['#FFF2CC','#7F6000'],'Blocked':['#FFE0E0','#C00000'],'Done':['#E2EFDA','#375623'],'Delayed':['#C0392B','#fff'],'At Risk':['#E67E22','#fff']},
+    type:{dep:['#DDEEFF','#1a4a9a'],risk:['#FFF0D4','#7a3a00'],req:['#F0E8FF','#4a1a7a'],issue:['#FFE0E0','#C00000'],decision:['#FFF2CC','#7F6000']},
+    priority:{P0:['#fde8e8','#c00'],P1:['#fff0d4','#a05000'],P2:['#e8f0ff','#1a4a9a'],P3:['#f4f4f4','#666']}
+  };
+  const c=(colors[type]||{})[val]||['',''];
+  if(wrap){wrap.style.background=c[0];wrap.style.borderColor=c[1]+'66';wrap.style.color=c[1];}
+  sel.style.color=c[1];sel.style.fontWeight='700';
+  if(label)label.style.color=c[1];
+}
+
+
+// ── SECTION & COLUMN RENAME ──────────────────────────────────────────────────
+function inlineRenameSection(e, ei, si){
+  e.stopPropagation();
+  e.preventDefault();
+  const sec = sections[ei][si];
+  const orig = sec.emoji + ' ' + sec.name;
+  const pencil = document.getElementById('sec-pencil-'+ei+'-'+si);
+  const hdrLeft = pencil ? pencil.parentElement : null;
+  if(!hdrLeft) return;
+  const textSpan = hdrLeft.querySelector('span:first-child');
+  if(!textSpan) return;
+  const inp = document.createElement('input');
+  inp.value = orig;
+  inp.style.cssText = 'background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.7);border-radius:4px;padding:2px 10px;font-size:13px;font-weight:700;font-family:inherit;outline:none;min-width:180px';
+  textSpan.replaceWith(inp);
+  if(pencil) pencil.style.visibility = 'hidden';
+  inp.focus(); inp.select();
+  function done(){
+    const val = inp.value.trim() || orig;
+    const parts = val.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*)?(.+)$/u);
+    if(parts){ sec.emoji = (parts[1]||sec.emoji).trim(); sec.name = parts[2].trim(); }
+    else { sec.name = val; }
+    logAudit('Section renamed to "'+sec.emoji+' '+sec.name+'"');
+    saveToFirebase();
+    structuralChange(()=>{});
+  }
+  inp.addEventListener('blur', done);
+  inp.addEventListener('keydown', function(ev){
+    ev.stopPropagation();
+    if(ev.key==='Enter'){ inp.blur(); }
+    if(ev.key==='Escape'){ inp.value=orig; inp.removeEventListener('blur',done); structuralChange(()=>{}); }
+  });
+}
+
+function startColRenameById(e, ci){
+  e.stopPropagation();
+  e.preventDefault();
+  const cols = allCols();
+  if(ci >= cols.length) return;
+  const col = cols[ci];
+  const orig = col.label;
+  const labelSpan = document.getElementById('col-label-'+ci);
+  const pencil = e.currentTarget;
+  if(!labelSpan) return;
+  const inp = document.createElement('input');
+  inp.value = orig;
+  inp.style.cssText = 'background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.7);border-radius:3px;padding:2px 8px;font-size:12px;font-weight:700;font-family:inherit;outline:none;width:110px';
+  labelSpan.replaceWith(inp);
+  if(pencil) pencil.style.visibility = 'hidden';
+  inp.focus(); inp.select();
+  function done(){
+    const val = inp.value.trim() || orig;
+    const coreIdx = CORE_COLS.findIndex(function(c){ return c.key===col.key; });
+    if(coreIdx>=0) CORE_COLS[coreIdx].label = val;
+    else { var ei2 = extraCols.findIndex(function(c){ return c.key===col.key; }); if(ei2>=0) extraCols[ei2].label = val; }
+    if(val !== orig){ logAudit('Column "'+orig+'" renamed to "'+val+'"'); saveToFirebase(); }
+    structuralChange(()=>{});
+  }
+  inp.addEventListener('blur', done);
+  inp.addEventListener('keydown', function(ev){
+    ev.stopPropagation();
+    if(ev.key==='Enter'){ inp.blur(); }
+    if(ev.key==='Escape'){ inp.value=orig; inp.removeEventListener('blur',done); structuralChange(()=>{}); }
+  });
+}
+
+// ── PRD & DECISION FUNCTIONS ──────────────────────────────────────────────────
+function confirmPRDLink(){
+  const url=document.getElementById('prd-url-input').value.trim();
+  const type=document.getElementById('prd-type-select').value;
+  if(!url){alert('Please enter a PRD URL.');return;}
+  prdLinks[_prdLinkFor]={url,type};
+  closeModal('prd-link-modal');
+  saveToFirebase();structuralChange(()=>{});
+  logAudit(`PRD linked for epic ${epics[_prdLinkFor]?.[0]}: ${url} (${type})`);
+}
+function updatePRDTypeNote(){
+  const type=document.getElementById('prd-type-select')?.value;
+  const note=document.getElementById('prd-type-note');
+  if(!note)return;
+  const notes={
+    confluence:'✅ Confluence: Decision appended to "Decisions Log" table automatically via API. Requires VPN + wiki login.',
+    gdoc:'📋 Google Doc: Decision copied to clipboard and doc opens — paste where needed.',
+    sharepoint:'🗂️ SharePoint: Decision copied to clipboard and SharePoint page opens.',
+    jira:'🔗 Jira: Decision posted as a comment on the epic ticket instantly.',
+  };
+  note.innerHTML=notes[type]||'';
+}
+function openUpdatePRD(ei,si,ri){
+  _updatePRDFor={ei,si,ri};
+  const row=sections[ei][si].rows[ri];
+  const sec=sections[ei][si];
+  const prd=prdLinks[ei];
+  const body=document.getElementById('update-prd-body');
+  const actions=document.getElementById('update-prd-actions');
+  const result=document.getElementById('update-prd-result');
+  result.style.display='none';
+  if(!prd||!prd.url){
+    body.innerHTML=`<div style="background:var(--yellow-bg);border:1px solid #ffe082;border-radius:6px;padding:10px 12px;font-size:12px;color:var(--yellow-text)">No PRD linked for this epic yet. Click <strong>"🔗 Link PRD"</strong> in the epic rail first.</div>`;
+    actions.innerHTML=`<button class="btn btn-primary" onclick="closeModal('update-prd-modal');openPRDLinkModal(${ei})">🔗 Link PRD Now</button>`;
+    openModal('update-prd-modal');return;
+  }
+  const now=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const typeLabels={confluence:'📄 Confluence Page',gdoc:'📝 Google Doc',sharepoint:'🗂️ SharePoint',jira:'🔗 Jira Epic Comment'};
+  const sc=SC[row.status]||['#f5f5f5','#555'];
+  body.innerHTML=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Decision to record:</div><div style="font-weight:600;color:var(--text);line-height:1.5">"${xe(row.decision)}"</div><div style="margin-top:6px;font-size:11px;color:var(--text3)">Section: ${xe(sec.emoji)} ${xe(sec.name)} · Owner: ${xe(row.owner||'—')} · Date: ${now}</div></div><div style="font-size:12px;color:var(--text2);margin-bottom:8px"><strong>Destination:</strong> ${typeLabels[prd.type]||prd.type}<br><a href="${xe(prd.url)}" target="_blank" style="color:var(--brand2);font-size:11px;word-break:break-all">${xe(prd.url)}</a></div>`;
+  if(prd.type==='confluence'){actions.innerHTML=`<button class="btn btn-out" onclick="closeModal('update-prd-modal')">Cancel</button><button class="btn btn-primary" id="update-prd-btn" onclick="executeUpdatePRD()">📝 Append to Confluence</button>`;}
+  else if(prd.type==='gdoc'||prd.type==='sharepoint'){actions.innerHTML=`<button class="btn btn-out" onclick="closeModal('update-prd-modal')">Cancel</button><button class="btn btn-primary" onclick="copyAndOpenDoc(${ei},${si},${ri},'${prd.type}')">📋 Copy & Open</button>`;}
+  else if(prd.type==='jira'){actions.innerHTML=`<button class="btn btn-out" onclick="closeModal('update-prd-modal')">Cancel</button><button class="btn btn-primary" id="update-prd-btn" onclick="postDecisionToJira(${ei},${si},${ri})">💬 Post to Jira</button>`;}
+  openModal('update-prd-modal');
+}
+async function executeUpdatePRD(){
+  const {ei,si,ri}=_updatePRDFor;const row=sections[ei][si].rows[ri];const sec=sections[ei][si];const prd=prdLinks[ei];const epicKey=epics[ei][0];
+  const now=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const btn=document.getElementById('update-prd-btn');const result=document.getElementById('update-prd-result');
+  btn.textContent='⏳ Updating…';btn.disabled=true;
+  const pageIdMatch=prd.url.match(/\/pages\/(\d+)|pageId=(\d+)/);const pageId=pageIdMatch?(pageIdMatch[1]||pageIdMatch[2]):null;
+  if(!pageId){result.style.display='block';result.innerHTML=`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px;font-size:12px;color:#7F6000">⚠️ Could not extract page ID. <a href="${xe(prd.url)}" target="_blank" style="color:var(--brand2)">Open PRD ↗</a> and paste manually:<br><code style="font-size:11px;background:var(--bg);padding:4px 8px;border-radius:3px;display:block;margin-top:4px">[${now}] ${xe(row.decision)} — ${xe(row.owner||'')} · ${xe(sec.name)}</code></div>`;btn.textContent='📝 Retry';btn.disabled=false;return;}
+  try{
+    const vRes=await fetch(`https://wiki.corp.adobe.com/rest/api/content/${pageId}?expand=version,body.storage`,{credentials:'include',headers:{'Accept':'application/json'}});
+    if(!vRes.ok)throw new Error('HTTP '+vRes.status);
+    const vData=await vRes.json();const version=vData.version.number+1;const existingBody=vData.body.storage.value;
+    const row_html=`<tr><td><strong>${now}</strong></td><td>${xe(row.decision)}</td><td>${xe(row.owner||'—')}</td><td>${xe(sec.emoji+' '+sec.name)}</td><td><a href="${JIRA_BASE}${epicKey}">${epicKey}</a></td></tr>`;
+    const newBody=existingBody.includes('Decisions Log')?existingBody.replace('</tbody></table>',row_html+'</tbody></table>'):existingBody+`<h2>Decisions Log</h2><table><tbody><tr><th>Date</th><th>Decision</th><th>Owner</th><th>Section</th><th>Epic</th></tr>${row_html}</tbody></table>`;
+    const updateRes=await fetch(`https://wiki.corp.adobe.com/rest/api/content/${pageId}`,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({version:{number:version},title:vData.title,type:'page',body:{storage:{value:newBody,representation:'storage'}}})});
+    if(!updateRes.ok)throw new Error('Update failed: '+updateRes.status);
+    sections[ei][si].rows[ri].prdSynced=now;saveToFirebase();logAudit(`[${rowKey(ei,si,ri)}] Decision pushed to Confluence`);
+    result.style.display='block';result.innerHTML=`<div style="color:var(--green-text);font-weight:600;font-size:12px">✅ Appended to Confluence! <a href="${xe(prd.url)}" target="_blank" style="color:var(--brand2)">View PRD ↗</a></div>`;
+    btn.textContent='✅ Done';setTimeout(()=>{closeModal('update-prd-modal');structuralChange(()=>{});},1500);
+  }catch(e){result.style.display='block';result.innerHTML=`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px;font-size:12px;color:#7F6000">⚠️ Failed (${e.message}). Make sure you're on VPN + logged into wiki.corp.adobe.com.<br><a href="${xe(prd.url)}" target="_blank">Open PRD manually ↗</a></div>`;btn.textContent='📝 Retry';btn.disabled=false;}
+}
+function copyAndOpenDoc(ei,si,ri,type){
+  const row=sections[ei][si].rows[ri];const sec=sections[ei][si];const epicKey=epics[ei][0];
+  const now=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const text=`[${now}] DECISION: ${row.decision}
+Epic: ${epicKey} | Section: ${sec.emoji} ${sec.name} | Owner: ${row.owner||'—'}
+Recorded via BTS Dependency Tracker`;
+  navigator.clipboard.writeText(text).catch(()=>{});
+  window.open(prdLinks[ei].url,'_blank');
+  const result=document.getElementById('update-prd-result');result.style.display='block';
+  result.innerHTML=`<div style="color:var(--green-text);font-size:12px;font-weight:600">✅ Decision copied! ${type==='sharepoint'?'SharePoint page':'Google Doc'} opened — paste it in the right section.</div>`;
+  sections[ei][si].rows[ri].prdSynced=now;saveToFirebase();
+}
+async function postDecisionToJira(ei,si,ri){
+  const row=sections[ei][si].rows[ri];const sec=sections[ei][si];const epicKey=epics[ei][0];
+  const now=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const btn=document.getElementById('update-prd-btn');const result=document.getElementById('update-prd-result');
+  btn.textContent='⏳ Posting…';btn.disabled=true;
+  try{
+    const body=`*📝 PRD Decision — ${now}*
+
+${row.decision}
+
+_Section:_ ${sec.emoji} ${sec.name}
+_Owner:_ ${row.owner||'—'}
+_Recorded via BTS Dependency Tracker_`;
+    const res=await fetch(`${JIRA_API}/issue/${epicKey}/comment`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({body})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    sections[ei][si].rows[ri].prdSynced=now;saveToFirebase();logAudit(`[${rowKey(ei,si,ri)}] Decision posted to Jira ${epicKey}`);
+    result.style.display='block';result.innerHTML=`<div style="color:var(--green-text);font-weight:600;font-size:12px">✅ Posted to <a href="${JIRA_BASE}${epicKey}" target="_blank" style="color:var(--brand2)">${epicKey}</a>!</div>`;
+    btn.textContent='✅ Done';setTimeout(()=>{closeModal('update-prd-modal');structuralChange(()=>{});},1500);
+  }catch(e){result.style.display='block';result.innerHTML=`<div style="color:#C00000;font-size:12px">❌ Failed: ${e.message}. Make sure you're on VPN + logged into Jira.</div>`;btn.textContent='💬 Retry';btn.disabled=false;}
+}
+
+// ── JIRA EPIC STATUS PANEL ────────────────────────────────────────────────────
+let _jiraEpicPanelOpen=false;
+const JIRA_PREFETCH={
+  'SPG-17032':{key:'SPG-17032',name:'[Acq] Project Bloom: Explainer Video Generator BTS (Beta release)',
+    status:'Planning',assignee:'Rahul Saraogi',fixVersions:'Jul 2026',duedate:null,
+    totalIssues:61,doneIssues:28,pct:46,
+    byType:{
+      'Story':{total:54,done:25,statuses:{'New':15,'Done':25,'In Development':5,'In Review':1,'Selected for Development':1,'Backlog':7}},
+      'Bug':{total:6,done:3,statuses:{'Done':3,'To Fix':1,'In Development':1,'New':1}},
+      'Dependency':{total:1,done:0,statuses:{'Backlog':1}},
+    },prefetched:true},
+  'SPG-17249':{key:'SPG-17249',name:'[Acq] Bloom Comic Creator - Creator Mode BTS',
+    status:'Discovery',assignee:'Aastha .',fixVersions:'Jul 2026, Q3 2026',duedate:null,
+    totalIssues:0,doneIssues:0,pct:0,byType:{},prefetched:true},
+  'SPG-17139':{key:'SPG-17139',name:'[Acq] Bloom Logged-Out Comic Creator Experience BTS',
+    status:'Planning',assignee:'Puneet Gupta',fixVersions:'Jul 2026, Q3 2026',duedate:null,
+    totalIssues:0,doneIssues:0,pct:0,byType:{},prefetched:true},
+  'SPG-17621':{key:'SPG-17621',name:'Comic Creator: Tablet Expansion',
+    status:'Planning',assignee:'Varun Varshney',fixVersions:'—',duedate:null,
+    totalIssues:0,doneIssues:0,pct:0,byType:{},prefetched:true},
+  'SPG-17622':{key:'SPG-17622',name:'Comic Creator: Budget & Throttling Safeguards',
+    status:'Planning',assignee:'Unassigned',fixVersions:'Jul 2026',duedate:null,
+    totalIssues:0,doneIssues:0,pct:0,byType:{},prefetched:true},
+  'SPG-17250':{key:'SPG-17250',name:'[Acq] Bloom Logged-Out Video Creator Experience',
+    status:'Open',assignee:'Varun Varshney',fixVersions:'Jul 2026',duedate:null,
+    totalIssues:0,doneIssues:0,pct:0,byType:{},prefetched:true},
+}
+const ISSUE_TYPE_COLORS={'Story':'#4a6fa5','Bug':'#C0392B','Task':'#4a7c40','Spike':'#E67E22','Dependency':'#0052CC','Design':'#E91E63'};
+const STATUS_COLORS_J={'Done':['#E2EFDA','#375623'],'Closed':['#E2EFDA','#375623'],'In Progress':['#DDEEFF','#1F497D'],'In Review':['#DDEEFF','#1F497D'],'New':['#FFF2CC','#7F6000'],'Open':['#FFF2CC','#7F6000'],'To Do':['#FFF2CC','#7F6000'],'Blocked':['#FFE0E0','#C00000'],'On Hold':['#FFE0E0','#C00000'],'Planning':['#f0e8ff','#6020a0']};
+async function loadJiraEpicStatus(forceRefresh=false){
+  const inner = document.getElementById('jira-epic-panel-inner');
+  const refreshBtn = document.getElementById('jira-refresh-all-btn');
+  if(refreshBtn){ refreshBtn.textContent='⏳ Loading…'; refreshBtn.disabled=true; }
+
+  // Show loading state
+  const banner = document.getElementById('jira-refresh-banner');
+  if(banner) banner.remove();
+  const loadingBanner = document.createElement('div');
+  loadingBanner.id = 'jira-refresh-banner';
+  loadingBanner.style.cssText = 'width:100%;text-align:center;padding:6px;font-size:11px;color:var(--text3);margin-bottom:8px';
+  loadingBanner.textContent = '⏳ Fetching live data from Jira…';
+  if(inner) inner.insertBefore(loadingBanner, inner.firstChild);
+
+  const results = [];
+  for(const [jiraKey, epicName, assignee] of epics){
+    try{
+      const jiraFetchOpts = {
+        method:'GET',
+        credentials:'include',
+        headers:{
+          'Content-Type':'application/json',
+          'Accept':'application/json',
+          'X-Atlassian-Token':'no-check',
+          'X-Requested-With':'XMLHttpRequest'
+        }
+      };
+      const epicRes = await fetch(`${JIRA_API}/issue/${jiraKey}?fields=summary,status,assignee,duedate,fixVersions`, jiraFetchOpts);
+      if(!epicRes.ok) throw new Error('HTTP '+epicRes.status);
+      const epicData = await epicRes.json();
+      const childRes = await fetch(`${JIRA_API}/search?jql=cf[11800]=${jiraKey}&fields=issuetype,status,summary,assignee&maxResults=200`, jiraFetchOpts);
+      const childData = await childRes.json();
+      const issues = childData.issues || [];
+      const byType = {};
+      issues.forEach(issue => {
+        const type = issue.fields?.issuetype?.name || 'Unknown';
+        const status = issue.fields?.status?.name || 'Unknown';
+        if(!byType[type]) byType[type] = {total:0, done:0, statuses:{}};
+        byType[type].total++;
+        if(['Done','Closed','Resolved'].includes(status)) byType[type].done++;
+        byType[type].statuses[status] = (byType[type].statuses[status]||0)+1;
+      });
+      const totalIssues = issues.length;
+      const doneIssues = issues.filter(i=>['Done','Closed','Resolved'].includes(i.fields?.status?.name)).length;
+      const pct = totalIssues ? Math.round(doneIssues/totalIssues*100) : 0;
+      results.push({
+        key:jiraKey, name:epicData.fields?.summary||epicName,
+        status:epicData.fields?.status?.name||'—',
+        assignee:epicData.fields?.assignee?.displayName||assignee||'—',
+        duedate:epicData.fields?.duedate||null,
+        fixVersions:(epicData.fields?.fixVersions||[]).map(v=>v.name).join(', ')||'—',
+        byType, totalIssues, doneIssues, pct, error:null
+      });
+    }catch(e){
+      console.error('[JIRA] Failed for '+jiraKey+':', e.message);
+      results.push({key:jiraKey, name:epicName, error:e.message, assignee, status:'—', duedate:null, fixVersions:'—', byType:{}, totalIssues:0, doneIssues:0, pct:0});
+    }
+  }
+  renderJiraEpicCards(results);
+  const btn2 = document.getElementById('jira-refresh-all-btn');
+  if(btn2){ btn2.textContent='↻ Refresh All from Jira'; btn2.disabled=false; }
+  const cacheNote = document.getElementById('jira-cache-note');
+  if(cacheNote) cacheNote.textContent = results.every(r=>r.error) ? '❌ Could not connect — showing cached data' : '✅ Live data from Jira — '+new Date().toLocaleTimeString();
+}
+
+function toggleJiraEpicPanel(btn){
+  const panel=document.getElementById('jira-epic-panel');
+  _jiraEpicPanelOpen=!_jiraEpicPanelOpen;
+  if(_jiraEpicPanelOpen){
+    panel.style.display='flex';
+    if(btn) btn.textContent='▼ Jira Epic Status';
+    const prefetchedResults=epics.map(([k])=>JIRA_PREFETCH[k]||{key:k,name:epics.find(([ek])=>ek===k)?.[1]||k,status:'—',assignee:'—',fixVersions:'—',duedate:null,totalIssues:0,doneIssues:0,pct:0,byType:{},prefetched:true});
+    renderJiraEpicCards(prefetchedResults,true);
+    // Don't auto-refresh — show cached data by default, user clicks Refresh for live
+  }else{panel.style.display='none';if(btn) btn.textContent='▶ Jira Epic Status';}
+}
+function renderJiraEpicCards(results,isPrefetched=false){
+  const inner=document.getElementById('jira-epic-panel-inner');
+  const banner=document.getElementById('jira-refresh-banner');if(banner)banner.remove();
+  const now=new Date();now.setHours(0,0,0,0);
+  if(results.every(r=>r.error)){
+    inner.innerHTML=`<div style="width:100%;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:16px 20px;font-size:12px;color:#7F6000">
+      <strong>❌ Could not load live Jira data</strong><br>
+      <div style="margin-top:8px;line-height:1.8">
+        Live refresh requires Adobe VPN. Currently showing <strong>cached data</strong> from Jun 26 2026.<br>
+        To refresh: connect to <strong>Adobe VPN</strong> → open <a href="https://jira.corp.adobe.com" target="_blank" style="color:#0052CC">jira.corp.adobe.com</a> → click ↻ Refresh All again.
+      </div>
+    </div>`;
+    return;
+  }
+  const note="";
+  inner.innerHTML=note+results.map(r=>{
+    if(r.error)return`<div class="jira-epic-card" style="border-top-color:#ccc;opacity:.7"><div style="font-size:11px;color:var(--text3)">${xe(r.key)}</div><div style="font-size:12px;font-weight:700;color:var(--text)">${xe(r.name)}</div><div style="font-size:11px;color:#C00000">⚠️ ${xe(r.error)}</div></div>`;
+    const sc=STATUS_COLORS_J[r.status]||['#f0f0f0','#555'];
+    const isOverdueE=r.duedate&&new Date(r.duedate)<now;
+    const dueFmt=r.duedate?new Date(r.duedate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+    const overallColor=r.pct===100?'#4CAF50':r.pct>60?'#4a6fa5':r.pct>30?'#E67E22':'#C0392B';
+    const typeRows=Object.entries(r.byType).sort((a,b)=>b[1].total-a[1].total).map(([type,data])=>{
+      const tp=data.total?Math.round(data.done/data.total*100):0;
+      const tc=ISSUE_TYPE_COLORS[type]||'#888';
+      const sb=Object.entries(data.statuses).map(([s,c])=>`${s}: ${c}`).join(' · ');
+      return`<div class="jira-issue-row" title="${sb}"><div class="jira-issue-type" style="background:${tc}">${type.slice(0,1)}</div><span style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${type}</span><span style="color:var(--text3);font-size:10px;width:28px;text-align:right">${data.total}</span><div class="jira-prog-bar" style="width:60px"><div class="jira-prog-fill" style="width:${tp}%;background:${tp===100?'#4CAF50':tc}"></div></div><span style="color:var(--text3);font-size:10px;width:28px;text-align:right">${tp}%</span></div>`;
+    }).join('');
+    return`<div class="jira-epic-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:11px"><a href="${JIRA_BASE}${r.key}" target="_blank" style="color:var(--brand2);font-weight:700;text-decoration:none">${xe(r.key)}</a></div>
+        <button style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:11px;padding:2px 8px;cursor:pointer;font-family:inherit;flex-shrink:0;margin-left:8px" data-key="${r.key}" onclick="refreshSingleEpic(this.dataset.key)" title="Refresh live from Jira">↻ Refresh</button>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:8px">${xe(r.name)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"><span class="jira-status-badge" style="background:${sc[0]};color:${sc[1]}">${xe(r.status)}</span>${r.assignee!=='—'?`<span style="font-size:10px;color:var(--text2);background:var(--bg);border:1px solid var(--border);padding:1px 7px;border-radius:10px">👤 ${xe(r.assignee)}</span>`:''}</div>
+      <div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:3px"><span>Overall Progress</span><span style="font-weight:700;color:${overallColor}">${r.doneIssues}/${r.totalIssues} (${r.pct}%)</span></div><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${r.pct}%;height:100%;background:${overallColor};border-radius:3px"></div></div></div>
+      ${r.totalIssues>0?`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Issue Type Breakdown</div><div>${typeRows}</div><div style="margin-top:6px;font-size:10px;color:var(--text3);text-align:right">${r.totalIssues} total issues</div>`:`<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px 0">No issues found</div>`}
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border2);display:flex;gap:8px;flex-wrap:wrap"><div style="font-size:10px;color:var(--text3)">📅 <strong style="color:${isOverdueE?'#C00000':'var(--text2)'}">${dueFmt}${isOverdueE?' ⚠️':''}</strong></div>${r.fixVersions!=='—'?`<div style="font-size:10px;color:var(--text3)">🏷️ <strong style="color:var(--text2)">${xe(r.fixVersions)}</strong></div>`:''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── TEAM ROSTER ──────────────────────────────────────────────────────────────
+// Known team members — update this list as team grows
+let TEAM_ROSTER = [
+  'Mayank Khatri','Rahul Saraogi','Aastha','Puneet Gupta','Varun Varshney',
+  'Siddhant','Uriel','Ali',
+];
+
+// ── ADMINS ──────────────────────────────────────────────────────────────────
+// Names listed here can delete ANY comment, not just their own.
+// NOTE: this is a soft/UI-level permission only — there's no real login system,
+// so anyone who picks this name from the roster gets admin rights. Fine for a
+// trusted internal team tool, but don't treat this as secure access control.
+let ADMIN_NAMES = ['Mayank Khatri'];
+function isAdminUser(name){ return ADMIN_NAMES.includes(name); }
+
+function getRosterMembers(){
+  // Merge static roster with anyone who has been an owner/assignee
+  const dynamic = new Set(TEAM_ROSTER);
+  sections.forEach(secs => secs.forEach(sec => sec.rows.forEach(r => {
+    if(r.owner && r.owner.trim()) dynamic.add(r.owner.trim());
+  })));
+  epics.forEach(([,,a]) => { if(a && a.trim()) dynamic.add(a.trim()); });
+  // Also add anyone who has commented
+  Object.values(comments).forEach(cmts => cmts.forEach(c => {
+    if(c.author && c.author !== 'Anonymous' && c.author !== 'You') dynamic.add(c.author);
+  }));
+  return [...dynamic].sort();
+}
+
+
+function selectRosterMember(name){
+  localStorage.setItem('bts_username', name);
+  document.getElementById('roster-modal').classList.remove('open');
+  refreshUsernameBar();
+  if(window._rosterCallback) window._rosterCallback(name);
+  window._rosterCallback = null;
+}
+function confirmRosterCustom(){
+  const name = document.getElementById('roster-custom-input').value.trim();
+  if(!name){ alert('Please enter your name.'); return; }
+  // Add to roster if not there
+  if(!TEAM_ROSTER.includes(name)) TEAM_ROSTER.push(name);
+  selectRosterMember(name);
+}
+// Close roster on backdrop click
+document.getElementById('roster-modal').addEventListener('click', function(e){
+  if(e.target === this) this.classList.remove('open');
+});
+
+// ── TEAM ROSTER ──────────────────────────────────────────────────────────────
+
+function openRosterModal(){
+  const grid = document.getElementById('roster-grid');
+  const members = getRosterMembers();
+  const curName = getUsername();
+  grid.innerHTML = members.map(name =>
+    `<button class="roster-btn${name===curName?' selected':''}" data-name="${xe(name)}" onclick="selectRosterMember(this.dataset.name)">
+      <div class="ra">${name.slice(0,2).toUpperCase()}</div>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${xe(name)}</span>
+    </button>`).join('');
+  document.getElementById('roster-custom-input').value = '';
+  document.getElementById('roster-modal').classList.add('open');
+}
+
+
+
+// ── LATEST UPDATE AUTO-COMMENT ──────────────────────────────────────────────
+
+// ── LATEST UPDATE AUTO-COMMENT ──────────────────────────────────────────────
+let _blockerCommentTimers={};
+function scheduleBlokerComment(ei,si,ri,text){
+  const key=rowKey(ei,si,ri);
+  clearTimeout(_blockerCommentTimers[key]);
+  _blockerCommentTimers[key]=setTimeout(()=>{
+    // Get the CURRENT value of the field — not just the value when timer was set
+    // This prevents posting half-typed messages if user is still thinking
+    const currentVal = (()=>{
+      try{
+        const rows=document.querySelectorAll('tr[data-key="'+key+'"]');
+        if(rows.length){
+          const ta=rows[0].querySelector('.ci[oninput*="blockers"]');
+          if(ta) return ta.value.trim();
+        }
+      }catch(e){}
+      return text;
+    })();
+    if(currentVal!==text)return; // user is still typing — abort
+    const author=getUsername()||'Anonymous';
+    const last=(comments[key]||[]).slice().reverse().find(c=>c.isAutoUpdate&&c.author===author);
+    if(last&&last.text===text)return;
+    if(!comments[key])comments[key]=[];
+    comments[key].push({author,text,ts:nowStr(),isAutoUpdate:true,jiraSynced:false});
+    logAudit(`[${key}] ${author} updated: "${text.slice(0,50)}"`);
+    saveToFirebase();
+    if(_detailKey===key) openDetail(ei,si,ri);
+  },8000);
+}
+
+// ── USERNAME ──────────────────────────────────────────────────────────────────
+function getUsername(){
+  return localStorage.getItem('bts_username') || '';
+}
+function initUsername(){
+  const name = getUsername();
+  if(!name){
+    // Show roster modal instead of prompt
+    setTimeout(()=>openRosterModal(), 200);
+    return '';
+  }
+  refreshUsernameBar();
+  return name;
+}
+function changeUsername(){
+  openRosterModal();
+}
+function refreshUsernameBar(){
+  const el = document.getElementById('dp-username-display');
+  if(el) el.textContent = getUsername() || 'Anonymous';
+}
+
+// Wire roster modal backdrop
+document.addEventListener('DOMContentLoaded', function(){
+  const rm = document.getElementById('roster-modal');
+  if(rm) rm.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+});
+
+// ── EMOJI PICKER ──────────────────────────────────────────────────────────────
+let _emojiPickerOpen = false;
+function toggleEmojiPicker(){
+  _emojiPickerOpen = !_emojiPickerOpen;
+  const picker = document.getElementById('emoji-picker');
+  if(picker) picker.classList.toggle('open', _emojiPickerOpen);
+}
+function closeEmojiPicker(){
+  _emojiPickerOpen = false;
+  const picker = document.getElementById('emoji-picker');
+  if(picker) picker.classList.remove('open');
+}
+// Wire emoji clicks
+document.addEventListener('click', function(e){
+  const picker = document.getElementById('emoji-picker');
+  if(!picker) return;
+  if(e.target.closest('#emoji-picker') && e.target.tagName === 'SPAN'){
+    const inp = document.getElementById('dp-comment-input-footer');
+    if(inp){
+      const pos = inp.selectionStart;
+      inp.value = inp.value.slice(0,pos) + e.target.textContent + inp.value.slice(pos);
+      inp.selectionStart = inp.selectionEnd = pos + e.target.textContent.length;
+      inp.focus();
+    }
+    closeEmojiPicker();
+    return;
+  }
+  if(!e.target.closest('#emoji-picker') && !e.target.closest('[onclick="toggleEmojiPicker()"]')){
+    closeEmojiPicker();
+  }
+});
+
+// ── @ MENTIONS ────────────────────────────────────────────────────────────────
+let _mentionStart = -1;
+function getMentionCandidates(){
+  const names = new Set();
+  sections.forEach(secs => secs.forEach(sec => sec.rows.forEach(r => {
+    if(r.owner && r.owner.trim()) names.add(r.owner.trim());
+  })));
+  epics.forEach(([,, assignee]) => { if(assignee && assignee.trim()) names.add(assignee.trim()); });
+  return [...names];
+}
+function handleMentionInput(inp){
+  const val = inp.value;
+  const pos = inp.selectionStart;
+  // Find @ before cursor
+  const before = val.slice(0, pos);
+  const atIdx = before.lastIndexOf('@');
+  const dropdown = document.getElementById('mention-dropdown');
+  if(atIdx >= 0 && !before.slice(atIdx+1).includes(' ')){
+    const query = before.slice(atIdx+1).toLowerCase();
+    const matches = getMentionCandidates().filter(n => n.toLowerCase().startsWith(query));
+    if(matches.length){
+      _mentionStart = atIdx;
+      dropdown.innerHTML = matches.slice(0,6).map((n,i) =>
+        `<div class="mention-item${i===0?' active':''}" onmousedown="insertMention('${n.replace(/'/g,"\'")}')">
+          <div class="avatar">${n.slice(0,2).toUpperCase()}</div>${n}
+        </div>`).join('');
+      dropdown.classList.add('open');
+      return;
+    }
+  }
+  _mentionStart = -1;
+  dropdown.classList.remove('open');
+}
+function insertMention(name){
+  const inp = document.getElementById('dp-comment-input-footer');
+  if(!inp) return;
+  const val = inp.value;
+  const pos = inp.selectionStart;
+  inp.value = val.slice(0, _mentionStart) + '@' + name + ' ' + val.slice(pos);
+  inp.selectionStart = inp.selectionEnd = _mentionStart + name.length + 2;
+  inp.focus();
+  document.getElementById('mention-dropdown').classList.remove('open');
+  _mentionStart = -1;
+}
+function formatCommentText(text){
+  // Highlight @mentions and convert newlines
+  return xe(text)
+    .replace(/@(\S+)/g, '<span class="comment-mention">@$1</span>')
+    .replace(/\n/g, '<br>');
+}
+
+// ── SYNC COMMENT TO JIRA ─────────────────────────────────────────────────────
+async function syncCommentToJira(ei,si,ri,cIdx,threadParent,btn){
+  const key=rowKey(ei,si,ri);
+  const cmts=threadParent!==undefined?(comments[key][threadParent].replies||[]):comments[key];
+  const c=cmts[cIdx];
+  if(!c)return;
+  const jiraKey=sections[ei][si].rows[ri]?.jiraKey;
+  if(!jiraKey){
+    alert('No Jira ticket linked to this row yet.\n\nAsk to "Sync Jira" — a ticket will be created and this comment will be posted to it.');
+    return;
+  }
+  if(btn){btn.textContent='⏳ Queuing…';btn.disabled=true;}
+
+  // Queue comment to Firebase commentQueue
+  try{
+    const queueRes = await fetch(FB_URL.replace('v2.json','commentQueue.json'));
+    const existing = await queueRes.json() || [];
+    const queue = Array.isArray(existing) ? existing : [];
+    queue.push({
+      jiraKey,
+      author: c.author||'Anonymous',
+      text: c.text,
+      ts: c.ts||nowStr(),
+      rowKey: key,
+      cIdx,
+      threadParent: threadParent!==undefined?threadParent:null,
+      queuedAt: new Date().toISOString(),
+    });
+    await fetch(FB_URL.replace('v2.json','commentQueue.json'),{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(queue)
+    });
+    // Mark as pending in local data
+    c.jiraSynced='pending';
+    logAudit(`[${key}] Comment queued for Jira sync to ${jiraKey}`);
+    saveToFirebase();
+    if(btn){btn.textContent='⏳ Queued';btn.style.color='#4a6fa5';btn.style.borderColor='#4a6fa5';}
+    openDetail(ei,si,ri);
+  }catch(e){
+    if(btn){btn.textContent='↗ Sync to Jira';btn.disabled=false;}
+    console.error('Comment queue failed:',e);
+  }
+}
+
+// ── COMMENT EDIT / DELETE / REPLY ─────────────────────────────────────────────
+function editComment(ei, si, ri, cIdx, threadParent){
+  const key = rowKey(ei,si,ri);
+  const cmts = threadParent !== undefined
+    ? (comments[key][threadParent].replies || [])
+    : comments[key];
+  if(!cmts || !cmts[cIdx]) return;
+  const cmt = cmts[cIdx];
+  const bubbleEl = document.getElementById(`cmt-bubble-${ei}-${si}-${ri}-${cIdx}${threadParent!==undefined?'-t'+threadParent:''}`);
+  if(!bubbleEl) return;
+  const origText = cmt.text;
+  bubbleEl.innerHTML = `<div class="comment-editing">
+    <textarea rows="2" style="width:100%;border:1px solid var(--brand2);border-radius:4px;padding:6px 8px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);resize:none;outline:none">${xe(origText)}</textarea>
+    <div style="display:flex;gap:6px;margin-top:4px">
+      <button class="btn btn-primary" style="font-size:11px;padding:3px 10px" onmousedown="saveEditComment(${ei},${si},${ri},${cIdx},this,${threadParent})">Save</button>
+      <button class="btn btn-out" style="font-size:11px;padding:3px 10px" onmousedown="openDetail(${ei},${si},${ri})">Cancel</button>
+    </div>
+  </div>`;
+}
+function saveEditComment(ei, si, ri, cIdx, btn, threadParent){
+  const key = rowKey(ei,si,ri);
+  const cmts = threadParent !== undefined
+    ? (comments[key][threadParent].replies || [])
+    : comments[key];
+  const ta = btn.closest('.comment-editing').querySelector('textarea');
+  const newText = ta.value.trim();
+  if(!newText) return;
+  cmts[cIdx].text = newText;
+  cmts[cIdx].edited = true;
+  logAudit(`[${key}] Comment edited`);
+  saveToFirebase();
+  openDetail(ei, si, ri);
+}
+function deleteComment(ei, si, ri, cIdx, threadParent, isAdminOverride){
+  const key = rowKey(ei,si,ri);
+  const target = threadParent!==undefined
+    ? (comments[key]?.[threadParent]?.replies?.[cIdx])
+    : (comments[key]?.[cIdx]);
+  const authorName = target?.author || 'Unknown';
+  const confirmMsg = isAdminOverride===true
+    ? `Admin delete: remove ${authorName}'s comment? This cannot be undone.`
+    : 'Delete this comment?';
+  if(!confirm(confirmMsg)) return;
+  if(threadParent !== undefined){
+    if(comments[key][threadParent].replies) comments[key][threadParent].replies.splice(cIdx,1);
+  } else {
+    comments[key].splice(cIdx, 1);
+  }
+  const me=getUsername()||'Anonymous';
+  logAudit(isAdminOverride===true
+    ? `[${key}] ${me} (admin) deleted ${authorName}'s comment`
+    : `[${key}] Comment deleted`);
+  saveToFirebase();
+  openDetail(ei, si, ri);
+}
+function replyToComment(ei, si, ri, parentIdx){
+  // Focus the input and pre-fill context
+  const inp = document.getElementById('dp-comment-input-footer');
+  if(inp){
+    inp.dataset.replyTo = parentIdx;
+    inp.placeholder = `Replying to comment ${parentIdx+1}… (Esc to cancel)`;
+    inp.focus();
+    inp.style.borderColor = 'var(--brand2)';
+    // Show cancel reply indicator
+    const bar = document.getElementById('dp-username-bar');
+    if(bar){
+      const existing = document.getElementById('reply-indicator');
+      if(existing) existing.remove();
+      const indicator = document.createElement('span');
+      indicator.id = 'reply-indicator';
+      indicator.style.cssText = 'font-size:10px;color:var(--brand2);margin-left:8px;cursor:pointer';
+      indicator.textContent = `↩ Replying to comment ${parentIdx+1} — click to cancel`;
+      indicator.onclick = cancelReply;
+      bar.appendChild(indicator);
+    }
+  }
+}
+function cancelReply(){
+  const inp = document.getElementById('dp-comment-input-footer');
+  if(inp){ delete inp.dataset.replyTo; inp.placeholder='Add a comment… (@mention, 😊 emoji)'; inp.style.borderColor=''; }
+  const ind = document.getElementById('reply-indicator');
+  if(ind) ind.remove();
+}
+
+
+// ── PRD LINK MODAL ────────────────────────────────────────────────────────────
+let _prdLinkFor = null;
+function openPRDLinkModal(ei){
+  _prdLinkFor = ei;
+  const existing = prdLinks[ei] || {};
+  document.getElementById('prd-url-input').value = existing.url || '';
+  document.getElementById('prd-type-select').value = existing.type || 'confluence';
+  updatePRDTypeNote();
+  openModal('prd-link-modal');
+  setTimeout(()=>document.getElementById('prd-url-input').focus(), 100);
+}
+
+// ── JIRA SECTION SYNC ─────────────────────────────────────────────────────────
+function openJiraSync(ei, si){
+  const sec = sections[ei][si];
+  const jira = epics[ei][0];
+  const toCreate = sec.rows.filter(r=>r.area&&r.area.trim()&&!r.jiraKey);
+  const toUpdate = sec.rows.filter(r=>r.area&&r.area.trim()&&r.jiraKey);
+  if(toCreate.length===0 && toUpdate.length===0){
+    alert('No rows with content to sync. Fill in the Area/Item field first.');
+    return;
+  }
+  if(!confirm('Queue entire section "'+sec.emoji+' '+sec.name+'" for Jira sync under '+jira+'?\n\n✅ Will CREATE: '+toCreate.length+' new ticket(s)\n🔄 Will UPDATE: '+toUpdate.length+' existing ticket(s)+'+'\n\nTell Claude "Process Jira queue" after queuing.')) return;
+  // Queue all rows
+  const epicKey = epics[ei][0];
+  if(!window._pendingJiraOps) window._pendingJiraOps = [];
+  sec.rows.forEach((row, ri) => {
+    if(!row.area || !row.area.trim()) return;
+    window._pendingJiraOps.push({
+      action: row.jiraKey ? 'update' : 'create',
+      ei, si, ri, epicKey,
+      section: sec.emoji+' '+sec.name,
+      area: row.area,
+      owner: row.owner||'',
+      priority: row.priority||'',
+      status: row.status||'',
+      eta: row.eta||'',
+      blockers: row.blockers||'',
+      itype: row.itype||'',
+      jiraKey: row.jiraKey||'',
+      queuedAt: new Date().toISOString(),
+      rowKey: rowKey(ei,si,ri),
+    });
+    sections[ei][si].rows[ri].jiraPending = true;
+    sections[ei][si].rows[ri]._ts = Date.now();
+  });
+  fetch(FB_URL.replace('v2.json','jiraQueue.json'), {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(window._pendingJiraOps)
+  }).then(()=>{
+    setStatus('📋 '+window._pendingJiraOps.length+' rows queued','#4a6fa5');
+    saveToFirebase(); renderAll();
+    alert('✅ '+toCreate.length+' rows queued for creation, '+toUpdate.length+' for update.\n\nTell Claude: "Process Jira queue" — I will handle it from my end!');
+  }).catch(e => setStatus('⚠️ Queue failed','#ff6060'));
+}
+async function syncSectionToJira(ei, si){
+  if(window.location.protocol === 'file:') return;
+  const sec = sections[ei][si];
+  const jira = epics[ei][0];
+  let created = 0, updated = 0, failed = 0, skipped = 0;
+  const rows = sec.rows.filter(r=>r.area&&r.area.trim());
+  setStatus(`⏳ Syncing ${rows.length} rows to Jira…`,'#e6a817');
+  for(let ri = 0; ri < sec.rows.length; ri++){
+    const row = sec.rows[ri];
+    if(!row.area || !row.area.trim()){ skipped++; continue; }
+    if(row.jiraKey){
+      // Update existing ticket
+      try{ await syncRowToJira(ei,si,ri); updated++; }
+      catch(e){ console.warn('Update failed for row',ri,e); }
+      continue;
+    }
+    // Create new ticket
+    try{
+      setStatus(`⏳ Creating ticket ${created+1}/${rows.length-updated}…`,'#e6a817');
+      const key = await createJiraDependency(ei, si, ri);
+      if(key){
+        sections[ei][si].rows[ri].jiraKey = key;
+        sections[ei][si].rows[ri]._ts = Date.now();
+        created++;
+      }
+    }catch(e){
+      console.error('[Jira] Create failed for row',ri,':',e.message);
+      failed++;
+    }
+  }
+  saveToFirebase();
+  renderAll();
+  const msg = `✅ ${created} created · ${updated} updated${failed?' · ❌ '+failed+' failed':''}`;
+  setStatus(msg,'#6abf60');
+  alert('Jira Sync Complete!\n\n'+msg+(failed?'\n\nCheck browser console for error details.':''));
+}
+async function createJiraDependency(ei, si, ri){
+  const row = sections[ei][si].rows[ri];
+  const sec = sections[ei][si];
+  const epicKey = epics[ei][0];
+
+  // Step 1: Create the Dependency issue with all required fields
+  const createBody = {
+    fields:{
+      project:{key:'SPG'},
+      summary: row.area.slice(0,255),
+      issuetype:{id:'12301'},
+      description: (row.blockers||'').length > 0 ? row.blockers : 'Created via BTS Dependency Tracker',
+      customfield_15325:{id:'216300',child:{id:'216305'}},
+      customfield_36400:[{id:'216331'}],
+      customfield_18031:{id:'216341'},
+    }
+  };
+
+  const res = await fetch(`${JIRA_API}/issue`, {
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-Atlassian-Token':'no-check'},
+    body: JSON.stringify(createBody)
+  });
+
+  if(!res.ok){
+    const errText = await res.text().catch(()=>'');
+    throw new Error(`HTTP ${res.status}: ${errText.slice(0,200)}`);
+  }
+  const data = await res.json();
+  const newKey = data.key;
+
+  // Step 2: Move to epic using Agile API (bypasses screen config restrictions)
+  try{
+    await fetch(`https://jira.corp.adobe.com/rest/agile/1.0/epic/${epicKey}/issue`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json','Accept':'application/json','X-Atlassian-Token':'no-check'},
+      body: JSON.stringify({issues:[newKey]})
+    });
+  }catch(e){
+    console.warn('Epic link failed (non-fatal):', e.message);
+  }
+
+  // Step 3: Set ETA as due date if present
+  if(row.eta){
+    try{
+      await fetch(`${JIRA_API}/issue/${newKey}`, {
+        method:'PUT', credentials:'include',
+        headers:{'Content-Type':'application/json','Accept':'application/json','X-Atlassian-Token':'no-check'},
+        body: JSON.stringify({fields:{duedate: row.eta}})
+      });
+    }catch(e){ console.warn('ETA set failed:', e.message); }
+  }
+
+  return newKey;
+}
+
+// ── JIRA ROW SYNC ─────────────────────────────────────────────────────────────
+function pushRowToJira(ei, si, ri){
+  const row = sections[ei][si].rows[ri];
+  if(!row.area || !row.area.trim()){
+    alert('Please fill in the Area / Item field before syncing to Jira.');
+    return;
+  }
+  const epicKey = epics[ei][0];
+  const sec = sections[ei][si];
+  const action = row.jiraKey ? 'update' : 'create';
+  const msg = row.jiraKey
+    ? `Queue UPDATE for ${row.jiraKey}?\n\nThis will update the Jira ticket with latest values.`
+    : `Queue CREATE for:\n"${row.area.slice(0,80)}"\n\nUnder epic ${epicKey}?`;
+  if(!confirm(msg)) return;
+
+  // Queue to Firebase jiraQueue
+  if(!window._jiraQueue) window._jiraQueue = [];
+  const queueItem = {
+    action, ei, si, ri, epicKey,
+    section: sec.emoji+' '+sec.name,
+    area: row.area,
+    owner: row.owner||'',
+    priority: row.priority||'',
+    status: row.status||'',
+    eta: row.eta||'',
+    blockers: row.blockers||'',
+    itype: row.itype||'',
+    jiraKey: row.jiraKey||'',
+    queuedAt: new Date().toISOString(),
+    rowKey: rowKey(ei,si,ri),
+  };
+  if(!window._pendingJiraOps) window._pendingJiraOps = [];
+  window._pendingJiraOps.push(queueItem);
+
+  // Save queue to Firebase
+  fetch(FB_URL.replace('v2.json','jiraQueue.json'), {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(window._pendingJiraOps)
+  }).then(()=>{
+    setStatus('📋 Queued for Jira sync','#4a6fa5');
+    // Mark row as pending
+    sections[ei][si].rows[ri].jiraPending = true;
+    sections[ei][si].rows[ri]._ts = Date.now();
+    saveToFirebase();
+    renderAll();
+    alert('✅ Queued!\n\nTell Claude: "Process Jira queue" — I will create/update the tickets from my end and update the tracker with the new ticket keys.');
+  }).catch(e=>{
+    setStatus('⚠️ Queue failed','#ff6060');
+  });
+}
+function confirmPushRow(ei,si,ri){ pushRowToJira(ei,si,ri); }
+
+
+
+// ── JIRA STATUS QUEUE ────────────────────────────────────────────────────────
+const JIRA_STATUS_MAP = {
+  'Done':        'Done',
+  'In Progress': 'In Progress',
+  'Blocked':     'Blocked',
+  'Pending':     'To Do',
+  'Delayed':     'In Progress',
+  'At Risk':     'In Progress',
+};
+async function queueJiraStatusUpdate(ei,si,ri,newStatus){
+  const row=sections[ei][si].rows[ri];
+  if(!row.jiraKey)return;
+  const jiraStatus=JIRA_STATUS_MAP[newStatus]||newStatus;
+  try{
+    const res=await fetch(FB_URL.replace('v2.json','jiraQueue.json'));
+    const existing=await res.json().catch(()=>[]);
+    const queue=Array.isArray(existing)?existing:[];
+    const rk=rowKey(ei,si,ri);
+    const filtered=queue.filter(q=>!(q.rowKey===rk&&q.action==='status'));
+    filtered.push({
+      action:'status',jiraKey:row.jiraKey,rowKey:rk,
+      trackerStatus:newStatus,jiraStatus,
+      queuedAt:new Date().toISOString(),
+      area:row.area?.slice(0,60)||'',
+    });
+    await fetch(FB_URL.replace('v2.json','jiraQueue.json'),{
+      method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(filtered)
+    });
+    logAudit('['+rk+'] Status "'+newStatus+'" queued for Jira '+row.jiraKey);
+    setStatus('📋 Status queued for Jira sync ('+row.jiraKey+')','#4a6fa5');
+  }catch(e){
+    console.warn('queueJiraStatusUpdate failed:',e.message);
+  }
+}
+
+// ── JIRA LIVE FIELD SYNC ──────────────────────────────────────────────────────
+let _jiraUpdateTimers = {};
+function scheduleJiraUpdate(ei,si,ri){
+  const key = rowKey(ei,si,ri);
+  clearTimeout(_jiraUpdateTimers[key]);
+  _jiraUpdateTimers[key] = setTimeout(()=>syncRowToJira(ei,si,ri), 2000);
+}
+async function syncRowToJira(ei,si,ri){
+  const row = sections[ei][si].rows[ri];
+  if(!row.jiraKey) return;
+  try{
+    const statusMap={'In Progress':'In Progress','Pending':'To Do','Blocked':'Blocked','Done':'Done','Delayed':'In Progress','At Risk':'In Progress'};
+    const fields = {
+      summary: row.area?.slice(0,255),
+      description: row.blockers || '',
+    };
+    if(row.eta) fields.duedate = row.eta;
+    await fetch(`${JIRA_API}/issue/${row.jiraKey}`,{
+      method:'PUT', credentials:'include',
+      headers:{'Content-Type':'application/json','Accept':'application/json','X-Atlassian-Token':'no-check'},
+      body: JSON.stringify({fields})
+    });
+  }catch(e){ console.warn('syncRowToJira failed:',e.message); }
+}
+async function postCommentToJira(jiraKey, author, text){
+  const body = `*${author}* via BTS Tracker:
+
+${text}`;
+  const res = await fetch(`${JIRA_API}/issue/${jiraKey}/comment`,{
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-Atlassian-Token':'no-check'},
+    body: JSON.stringify({body})
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+}
+
+
+// ── TITLE RENAME ─────────────────────────────────────────────────────────────
+function editTitle(){
+  const el=document.getElementById('tracker-title');
+  const current=el.textContent.replace('✏️','').replace('📊','').trim();
+  const inp=document.createElement('input');
+  inp.value=current;
+  inp.style.cssText='font-size:14px;font-weight:600;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:4px;padding:2px 8px;outline:none;width:320px;font-family:inherit';
+  el.innerHTML='';el.appendChild(inp);
+  inp.focus();inp.select();
+  const done=()=>{
+    const val=inp.value.trim()||'BTS Dependency Tracker';
+    el.innerHTML=`📊 ${val} <span style="font-size:10px;opacity:.4;margin-left:2px">✏️</span>`;
+    localStorage.setItem('bts_title',val);
+  };
+  inp.addEventListener('blur',done);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=current;inp.blur();}});
+}
+
+
+
+// ── TITLE RENAME ─────────────────────────────────────────────────────
+
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+(async()=>{
+  if(localStorage.getItem('bts_dark')==='1'){document.body.classList.add('dark');document.getElementById('dark-btn').textContent='☀️';}
+  const savedTitle=localStorage.getItem('bts_title');
+  if(savedTitle){const el=document.getElementById('tracker-title');if(el)el.innerHTML=`📊 ${savedTitle} <span style="font-size:10px;opacity:.4;margin-left:2px">✏️</span>`;}
+  initSections();
+  renderAll();
+  setStatus('⏳ Connecting…','rgba(255,255,255,.4)');
+  const loaded=await loadFromFirebase();
+  if(loaded)renderAll();
+  // Auto-set Delayed for any row with past ETA that isn't Done/Delayed
+  let autoDelayedCount = 0;
+  sections.forEach((secs,ei)=>(secs||[]).forEach((sec,si)=>(sec.rows||[]).forEach((r,ri)=>{
+    if(r.eta && isPastDue(r.eta) && r.status && r.status!=='Done' && r.status!=='Delayed'){
+      sections[ei][si].rows[ri].status = 'Delayed';
+      sections[ei][si].rows[ri]._ts = Date.now();
+      autoDelayedCount++;
+    }
+  })));
+  if(autoDelayedCount > 0){
+    saveToFirebase();
+    renderAll();
+    console.log(`[BTS] Auto-set ${autoDelayedCount} overdue row(s) to Delayed`);
+  }
+
+  setTimeout(showOverdueToast,1000);
+  // Poll Firebase every 60s, but skip if user edited in last 10s
+  setInterval(async()=>{
+    if(_lastEditTime && (Date.now()-_lastEditTime) < 15000) return;
+    const before=JSON.stringify({sections,comments});
+    await loadFromFirebase();
+    if(JSON.stringify({sections,comments})!==before) renderAll();
+  }, 60000);
+})();
+</script>
+</body>
+</html>
